@@ -17,8 +17,7 @@ namespace LibIOCP.DataProtocol
         {
             Close();
             //SocketCount--;
-            _lokBuffdata = null;
-            _lokRootObject = null;
+            
 
             long curCount = 0;
             lock (autoLock)
