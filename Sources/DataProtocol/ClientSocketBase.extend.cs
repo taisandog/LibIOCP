@@ -17,8 +17,8 @@ namespace LibIOCP.DataProtocol
         {
             Close();
             //SocketCount--;
-            
 
+#if DEBUG
             long curCount = 0;
             lock (autoLock)
             {
@@ -31,7 +31,7 @@ namespace LibIOCP.DataProtocol
                 string str = String.Format("ClientSocket Release, id ={0}, count={1}", _id, curCount);
                 _netProtocol.Log(str);
             }
-
+#endif
         }
 
         
