@@ -866,9 +866,6 @@ namespace LibIOCP.DataProtocol
                 }
             }
             _message = null;
-            _lokBuffdata = null;
-            _lokRootObject = null;
-            _lokSend = null;
             
             _remoteIP = null;
             EventHandleClean.ClearAllEvents(this);
