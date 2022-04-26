@@ -684,8 +684,7 @@ namespace LibIOCP.DataProtocol
                        
                         while (_netProtocol.IsDataLegal(out dataPacket, this))
                         {
-                            OnReceiveData(this, dataPacket);
-                            //DoDataPacket(dataPacket, recDate);
+                            DoDataPacket(dataPacket, recDate);
                         }
 
 
@@ -707,7 +706,7 @@ namespace LibIOCP.DataProtocol
             }
         }
 
-       
+
 
         ///// <summary>
         ///// 过滤加载到缓存的内容
@@ -721,18 +720,15 @@ namespace LibIOCP.DataProtocol
         //    bufferData.AppendBytes(e.Buffer, e.Offset, e.BytesTransferred);
         //    return false;
         //}
-        
-        
 
 
-        public virtual void DoDataPacket(DataPacketBase dataPacket, DateTime recDate) 
+
+
+        public virtual void DoDataPacket(DataPacketBase dataPacket, DateTime recDate)
         {
             if (dataPacket != null && OnReceiveData != null)
             {
-                lock (dataPacket)
-                {
-                    OnReceiveData(this, dataPacket);
-                }
+                OnReceiveData(this, dataPacket);
             }
         }
 
