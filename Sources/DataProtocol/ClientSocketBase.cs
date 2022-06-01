@@ -556,29 +556,7 @@ namespace LibIOCP.DataProtocol
         }
 
 
-        private byte[] GetSendData(byte[] data)
-        {
-            //if (_certConfig==null)
-            //{
-            //    return data;
-            //}
-            //if (_sslSendStream == null)
-            //{
-            //    LoadCertificate(_certConfig);
-            //}
-
-            //_bufferSendSSL.SetLength(0);
-            //using (SslStream ssl = _certConfig.CreateStream(_bufferSendSSL, _isServerSocket))
-            //{
-            //    ssl.Write(data, 0, data.Length);
-            //    ssl.Flush();
-            //    return _bufferSendSSL.ToArray();
-
-            //}
-            return data;
-
-
-        }
+       
 
         /// <summary>
         /// 发送失败
@@ -848,19 +826,7 @@ namespace LibIOCP.DataProtocol
         }
 
 
-        ///// <summary>
-        ///// 过滤加载到缓存的内容
-        ///// </summary>
-        ///// <param name="e">socket</param>
-        ///// <param name="bufferData">数据</param>
-        ///// <param name="dataPacket">组建出来的Data包</param>
-        ///// <returns>是否有数据包返回</returns>
-        //protected virtual bool FilterAppendBuffer(SocketAsyncEventArgs e, NetByteBuffer bufferData, ref DataPacketBase dataPacket)
-        //{
-        //    bufferData.AppendBytes(e.Buffer, e.Offset, e.BytesTransferred);
-        //    return false;
-        //}
-
+      
 
 
 

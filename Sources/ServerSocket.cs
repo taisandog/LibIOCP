@@ -391,14 +391,12 @@ namespace LibIOCP
                 catch { }
                 return;
             }
+            ClientSocketBase clientSocket = null;
             try
             {
-                //if (Util.HasShowLog(_message))
-                //{
-                //    _message.Log("Client connection accepted.");
-                //}
-                ClientSocketBase clientSocket = _netProtocol.CreateClientSocket(e.AcceptSocket, 15, 15, _heardmanager,true,_certConfig);
-                //clientSocket.CertConfig = _certConfig;
+               
+                clientSocket = _netProtocol.CreateClientSocket(e.AcceptSocket, 15, 15, _heardmanager,true,_certConfig);
+                
 
                 
                 clientSocket.OnClose += Client_OnClose;
@@ -414,6 +412,29 @@ namespace LibIOCP
                 }
                 clientSocket.AddReceiveDataHandle(Client_OnReceiveData);
                 
+            }
+            catch(Exception ex) 
+            {
+                if (clientSocket != null)
+                {
+                    try
+                    {
+                        clientSocket.Close();
+                    }
+                    catch { }
+                }
+                else
+                {
+                    try
+                    {
+                        e.AcceptSocket.Close();
+                    }
+                    catch { }
+                }
+                if (Util.HasShowError(_message))
+                {
+                    _message.LogError(ex.ToString());
+                }
             }
             finally
             {
