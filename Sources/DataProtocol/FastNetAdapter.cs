@@ -247,9 +247,9 @@ namespace LibIOCP.DataProtocol
         /// </summary>
         /// <returns></returns>
         public ClientSocketBase CreateClientSocket(Socket socket, int maxSendPool = 15, int maxLostPool = 15,
-            HeartManager heartManager = null, bool isServerSocket = false)
+            HeartManager heartManager = null, bool isServerSocket = false, SocketCertConfig certConfig = null)
         {
-            FastClientSocket ret = new FastClientSocket(socket, maxSendPool, maxLostPool, heartManager,this );
+            FastClientSocket ret = new FastClientSocket(socket, maxSendPool, maxLostPool, heartManager, isServerSocket, this ,certConfig);
             return ret;
         }
 

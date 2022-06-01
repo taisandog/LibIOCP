@@ -8,7 +8,7 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace GameBoxIOCP.DataProtocol
+namespace LibIOCP.DataProtocol
 {
     /// <summary>
     /// WebSocket适配器
@@ -118,6 +118,7 @@ namespace GameBoxIOCP.DataProtocol
         /// <returns>是否进行下一次判断</returns>
         public bool IsDataLegal(out DataPacketBase recPacket, ClientSocketBase socket)
         {
+            Console.WriteLine("有数据");
             NetByteBuffer buffer = socket.BufferData;
             DataManager dataManager = socket.DataManager;
             recPacket = null;
@@ -213,9 +214,9 @@ namespace GameBoxIOCP.DataProtocol
         /// </summary>
         /// <returns></returns>
         public ClientSocketBase CreateClientSocket(Socket socket, int maxSendPool = 15, int maxLostPool = 15,
-            HeartManager heartManager = null, bool isServerSocket = false)
+            HeartManager heartManager = null, bool isServerSocket = false, SocketCertConfig certConfig = null)
         {
-            WebSocketClientSocket ret = new WebSocketClientSocket(socket, maxSendPool, maxLostPool, heartManager, this,isServerSocket);
+            WebSocketClientSocket ret = new WebSocketClientSocket(socket, maxSendPool, maxLostPool, heartManager, isServerSocket, this,certConfig);
             return ret;
         }
 

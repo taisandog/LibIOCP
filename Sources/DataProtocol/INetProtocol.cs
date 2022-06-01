@@ -47,7 +47,7 @@ namespace LibIOCP.DataProtocol
         /// <param name="isServerSocket">是否监听创建连接</param>
         /// <returns></returns>
         ClientSocketBase CreateClientSocket(Socket socket, int maxSendPool = 15, int maxLostPool = 15,
-            HeartManager heartManager = null,bool isServerSocket=false);
+            HeartManager heartManager = null,bool isServerSocket=false, SocketCertConfig certConfig = null);
 
         /// <summary>
         /// 空ID

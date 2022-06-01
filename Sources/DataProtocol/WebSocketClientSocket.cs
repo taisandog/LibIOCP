@@ -1,10 +1,10 @@
 ﻿using Buffalo.Kernel;
-using GameBoxIOCP.DataProtocol;
 using LibIOCP.DataProtocol;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Sockets;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -39,14 +39,7 @@ namespace LibIOCP.DataProtocol
             }
         }
 
-        private bool _isServerSocket = false;
-        /// <summary>
-        /// 是否监听创建的连接
-        /// </summary>
-        public bool IsServerSocket 
-        {
-            get { return _isServerSocket; }
-        }
+       
 
         private static INetProtocol _defaultAdapter = new WebSocketAdapter();
 
@@ -59,18 +52,19 @@ namespace LibIOCP.DataProtocol
         /// </summary>
         /// <param name="socket"></param>
         /// <param name="heartManager"></param>
-        public WebSocketClientSocket(Socket socket, int maxSendPool, int maxLostPool, HeartManager heartManager, INetProtocol netProtocol = null, bool isServerSocket = false)
-        : base(socket, maxSendPool, maxLostPool, heartManager, netProtocol)
+        public WebSocketClientSocket(Socket socket, int maxSendPool, int maxLostPool, HeartManager heartManager, bool isServerSocket,
+            INetProtocol netProtocol = null, SocketCertConfig certConfig = null)
+        : base(socket, maxSendPool, maxLostPool, isServerSocket, heartManager, netProtocol,certConfig)
         {
-            _isServerSocket=isServerSocket;
         }
         /// <summary>
         /// 
         /// </summary>
         /// <param name="socket"></param>
         /// <param name="heartManager"></param>
-        public WebSocketClientSocket(Socket socket, HeartManager heartManager, INetProtocol netProtocol = null)
-            : this(socket, 15, 15, heartManager, netProtocol)
+        public WebSocketClientSocket(Socket socket, HeartManager heartManager, bool isServerSocket=false, 
+            INetProtocol netProtocol = null, SocketCertConfig certConfig = null)
+            : this(socket, 15, 15, heartManager,isServerSocket, netProtocol, certConfig)
         {
 
         }
@@ -137,11 +131,14 @@ namespace LibIOCP.DataProtocol
         {
             if (string.IsNullOrWhiteSpace(webSocketKey))
             {
-                webSocketKey = Convert.ToBase64String(Guid.NewGuid().ToByteArray());
+                SHA1 sha1 = new SHA1CryptoServiceProvider();//创建SHA1对象
+
+                webSocketKey = Convert.ToBase64String(sha1.ComputeHash(Guid.NewGuid().ToByteArray()));
             }
             string handShakeStr = ProtocolDraft10.GetWebSocketHandShake(host, webSocketKey);
             byte[] data = System.Text.Encoding.UTF8.GetBytes(handShakeStr);
-            _bindSocket.Send(data);
+
+            SendRaw(data);
         }
 
         public DataPacketBase SendText(string text) 
@@ -155,15 +152,20 @@ namespace LibIOCP.DataProtocol
 
         public override void Close()
         {
-            try
+            lock (_lokRootObject)
             {
-                if (_msMessage != null)
+                NetByteBuffer msbuff = _msMessage;
+                
+                try
                 {
-                    _msMessage.Dispose();
+                    if (msbuff != null)
+                    {
+                        msbuff.Dispose();
+                    }
                 }
+                catch { }
+                _msMessage = null;
             }
-            catch { }
-            _msMessage = null;
             base.Close();
         }
     }

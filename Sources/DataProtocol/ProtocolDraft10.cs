@@ -46,6 +46,7 @@ namespace LibIOCP.DataProtocol
                     string line = null;
                     while ((line = reader.ReadLine()) != null)
                     {
+                        
                         if (line.IndexOf("Sec-WebSocket-Key:", StringComparison.CurrentCultureIgnoreCase) >= 0)
                         {
                             return true;
@@ -84,6 +85,7 @@ namespace LibIOCP.DataProtocol
 
             return false;
         }
+        
         /// <summary>
         /// 获取WebSocket握手信息
         /// </summary>
@@ -94,17 +96,32 @@ namespace LibIOCP.DataProtocol
         {
             StringBuilder sbRet=new StringBuilder();
             sbRet.AppendLine("GET / HTTP/1.1");
+            sbRet.AppendLine("Host: " + host);
             sbRet.AppendLine("Connection: Upgrade");
+            //sbRet.AppendLine("Pragma: no-cache");
+            //sbRet.AppendLine("Cache-Control: no-cache");
+            //sbRet.AppendLine("User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/101.0.4951.67 Safari/537.36");
             sbRet.AppendLine("Upgrade: websocket");
-            sbRet.AppendLine("Host: "+ host);
-            sbRet.AppendLine("Origin: null");
+            //sbRet.AppendLine("Origin: http://"+ host);
+            sbRet.AppendLine("Sec-WebSocket-Version: 13");
+            //sbRet.AppendLine("Accept-Encoding: gzip, deflate, br");
+            //sbRet.AppendLine("Accept-Language: zh-CN,zh;q=0.9,en;q=0.8,ja;q=0.7,zh-TW;q=0.6");
+
             if (string.IsNullOrWhiteSpace(webSocketKey)) 
             {
                 webSocketKey=Convert.ToBase64String(Guid.NewGuid().ToByteArray());
             }
             sbRet.AppendLine("Sec-WebSocket-Key: "+ webSocketKey);
-            sbRet.AppendLine("Sec-WebSocket-Version: 13");
+            //sbRet.AppendLine("Sec-WebSocket-Extensions: permessage-deflate; client_max_window_bits");
+            sbRet.AppendLine("" );//必须有一行空行作为结尾
+           
             return sbRet.ToString();
+        }
+        private static KeyValuePair<string, string> CreateSecKeyAndSecWebSocketAccept()
+        {
+            string text = Convert.ToBase64String(Guid.NewGuid().ToByteArray());
+            SHA1 sHA = SHA1.Create();
+            return new KeyValuePair<string, string>(text, Convert.ToBase64String(sHA.ComputeHash(Encoding.ASCII.GetBytes(text + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"))));
         }
 
         /// <summary>

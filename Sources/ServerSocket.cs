@@ -1,7 +1,9 @@
-﻿using LibIOCP.DataProtocol;
+﻿
+using LibIOCP.DataProtocol;
 using System;
 using System.Collections.Generic;
 using System.Net;
+using System.Net.Security;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
@@ -190,6 +192,15 @@ namespace LibIOCP
             get{ return _message; }
         }
         #endregion
+        private SocketCertConfig _certConfig;
+        /// <summary>
+        /// 加密证书配置
+        /// </summary>
+        public SocketCertConfig CertConfig
+        { 
+            get { return _certConfig; }
+            set { _certConfig = value; }
+        }
 
         #region 方法
         /// <summary>
@@ -298,7 +309,9 @@ namespace LibIOCP
             {
                 _listenSocket = CreateSocket();
             }
+
             _listenSocket.Listen(backlog);
+            
             _socketAsyncEventArgs = new SocketAsyncEventArgs();
             _socketAsyncEventArgs.Completed += new EventHandler<SocketAsyncEventArgs>(AsyncAccept);
             _listenSocket.AcceptAsync(_socketAsyncEventArgs);
@@ -380,15 +393,15 @@ namespace LibIOCP
             }
             try
             {
-                if (Util.HasShowLog(_message))
-                {
-                    _message.Log("Client connection accepted.");
-                }
+                //if (Util.HasShowLog(_message))
+                //{
+                //    _message.Log("Client connection accepted.");
+                //}
+                ClientSocketBase clientSocket = _netProtocol.CreateClientSocket(e.AcceptSocket, 15, 15, _heardmanager,true,_certConfig);
+                //clientSocket.CertConfig = _certConfig;
 
-                ClientSocketBase clientSocket = _netProtocol.CreateClientSocket(e.AcceptSocket, 15, 15, _heardmanager,true);
-                clientSocket.OnClose += Client_OnClose;
                 
-
+                clientSocket.OnClose += Client_OnClose;
                 clientSocket.OnError += ClientSocket_OnError;
                 if (OnMessage != null)
                 {
@@ -400,6 +413,7 @@ namespace LibIOCP
                     OnAccept(clientSocket);
                 }
                 clientSocket.AddReceiveDataHandle(Client_OnReceiveData);
+                
             }
             finally
             {

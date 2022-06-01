@@ -18,8 +18,9 @@ namespace LibIOCP.DataProtocol
         /// </summary>
         /// <param name="socket"></param>
         /// <param name="heartManager"></param>
-        public FastClientSocket(Socket socket, int maxSendPool, int maxLostPool, HeartManager heartManager, INetProtocol netProtocol = null)
-        : base(socket, maxSendPool, maxLostPool, heartManager, netProtocol)
+        public FastClientSocket(Socket socket, int maxSendPool, int maxLostPool, HeartManager heartManager,
+            bool isServerSocket, INetProtocol netProtocol = null, SocketCertConfig certConfig = null)
+        : base(socket, maxSendPool, maxLostPool, isServerSocket, heartManager, netProtocol, certConfig)
         {
             
         }
@@ -28,8 +29,9 @@ namespace LibIOCP.DataProtocol
         /// </summary>
         /// <param name="socket"></param>
         /// <param name="heartManager"></param>
-        public FastClientSocket(Socket socket, HeartManager heartManager, INetProtocol netProtocol = null)
-            : this(socket, 15, 15, heartManager, netProtocol)
+        public FastClientSocket(Socket socket, HeartManager heartManager, bool isServerSocket, 
+            INetProtocol netProtocol = null, SocketCertConfig certConfig = null)
+            : this(socket, 15, 15, heartManager, isServerSocket, netProtocol,certConfig)
         {
 
         }

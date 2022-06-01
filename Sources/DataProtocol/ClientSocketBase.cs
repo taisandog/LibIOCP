@@ -1,14 +1,19 @@
 ﻿using Buffalo.Kernel;
-
+using LibIOCP.DataProtocol;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Net;
+using System.Net.Security;
 using System.Net.Sockets;
 using System.Reflection;
+using System.Security.Authentication;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace LibIOCP.DataProtocol
 {
@@ -48,8 +53,40 @@ namespace LibIOCP.DataProtocol
         /// 收到数据
         /// </summary>
         private event DataEvent OnReceiveData;
+        private SocketCertConfig _certConfig;
+        /// <summary>
+        /// 加密证书配置
+        /// </summary>
+        public SocketCertConfig CertConfig
+        {
+            get { return _certConfig; }
+            
+        }
 
-        public void AddReceiveDataHandle(DataEvent receiveData) 
+        /// <summary>
+        /// 重建字节流
+        /// </summary>
+        private void RebuildTlsStream()
+        {
+            if (_tlsStream != null)
+            {
+                _tlsStream.Close();
+            }
+            _tlsStream = null;
+            if (_certConfig == null)
+            {
+                return;
+            }
+            if (_netStream == null)
+            {
+                _netStream = new NetworkStream(_bindSocket);
+            }
+            _tlsStream = _certConfig.CreateStream(_netStream, _isServerSocket);
+
+
+        }
+
+        public void AddReceiveDataHandle(DataEvent receiveData)
         {
             OnReceiveData += receiveData;
             Receive();
@@ -71,6 +108,15 @@ namespace LibIOCP.DataProtocol
         /// 一般通知事件
         /// </summary>
         public event NormalMessageHandle OnMessage;
+        /// <summary>
+        /// 当前的加密Stream
+        /// </summary>
+        private SslStream _tlsStream;
+
+        /// <summary>
+        /// 网络流
+        /// </summary>
+        private NetworkStream _netStream;
 
         //private BlockThreadPool _thdPool = null;
         #endregion
@@ -141,29 +187,6 @@ namespace LibIOCP.DataProtocol
                 return _bufferData;
             }
         }
-        ///// <summary>
-        ///// WebSocket收到的数据缓存区
-        ///// </summary>
-        //protected NetByteBuffer _wsBufferData = new NetByteBuffer(1024);
-        ///// <summary>
-        ///// WebSocket收到的数据缓存区
-        ///// </summary>
-        //public NetByteBuffer WSBufferData
-        //{
-
-        //    get
-        //    {
-        //        return _wsBufferData;
-        //    }
-        //}
-        ///// <summary>
-        ///// 数据缓存区当前存放的数据长度
-        ///// </summary>
-        //protected int _bufferDataLenght;
-
-
-
-
 
         /// <summary>
         /// 连接超时时间
@@ -258,7 +281,7 @@ namespace LibIOCP.DataProtocol
         /// </summary>
         protected HeartManager _heartmanager;
 
-        public HeartManager HeartManager 
+        public HeartManager HeartManager
         {
             get { return _heartmanager; }
         }
@@ -285,29 +308,42 @@ namespace LibIOCP.DataProtocol
 
         private static INetProtocol _defaultAdapter = new DefaultNetAdapter();
 
-        protected virtual INetProtocol CreateDefaultAdapter() 
+        protected virtual INetProtocol CreateDefaultAdapter()
         {
+
             return _defaultAdapter;
         }
+        private bool _isServerSocket = false;
+        /// <summary>
+        /// 是否服务器连接
+        /// </summary>
+        public bool IsServerSocket
+        {
+            get { return _isServerSocket; }
+        }
+
+
+
 
         /// <summary>
-        /// 
+        /// 创建Socket
         /// </summary>
         /// <param name="socket"></param>
+        /// <param name="maxSendPool"></param>
+        /// <param name="maxLostPool"></param>
+        /// <param name="isServerSocket"></param>
         /// <param name="heartManager"></param>
-        public ClientSocketBase(Socket socket, HeartManager heartManager, INetProtocol netProtocol = null)
-            : this(socket, 15, 15, heartManager, netProtocol)
-        {
-
-        }
-        protected ClientSocketBase(Socket socket, int maxSendPool, int maxLostPool,
-            HeartManager heartManager = null, INetProtocol netProtocol = null)
+        /// <param name="netProtocol"></param>
+        protected ClientSocketBase(Socket socket, int maxSendPool, int maxLostPool, bool isServerSocket,
+            HeartManager heartManager, INetProtocol netProtocol, SocketCertConfig certConfig)
         {
             _netProtocol = netProtocol;
             if (_netProtocol == null)
             {
                 _netProtocol = CreateDefaultAdapter();
             }
+            _certConfig = certConfig;
+            _isServerSocket = isServerSocket;
             //_thdPool = new BlockThreadPool(2000);
             _dataManager = new DataManager(maxSendPool, maxLostPool, _netProtocol);
             _bindSocket = socket;
@@ -323,22 +359,28 @@ namespace LibIOCP.DataProtocol
 
             }
             RecevieSocketAsync = new SocketAsyncEventArgs();
-            RecevieSocketAsync.AcceptSocket = _bindSocket;
-            int buffLen = _netProtocol.BufferLength;
-            RecevieSocketAsync.SetBuffer(new byte[buffLen], 0, buffLen);
-            RecevieSocketAsync.Completed += new EventHandler<SocketAsyncEventArgs>(OnRecCompleted);
-
             
+            int buffLen = _netProtocol.BufferLength;
+           
+            if (_certConfig == null)
+            {
+                RecevieSocketAsync.AcceptSocket = _bindSocket;
+                RecevieSocketAsync.Completed += new EventHandler<SocketAsyncEventArgs>(OnRecCompleted);
+            }
+            RecevieSocketAsync.SetBuffer(new byte[buffLen], 0, buffLen);
             LastSendTime = DateTime.Now;
             LastReceiveTime = DateTime.Now;
             //SocketCount++;
-            
+            if (_certConfig != null)
+            {
+                RebuildTlsStream();
+            }
             if (heartManager != null)
             {
                 heartManager.AddClient(this);
                 _heartmanager = heartManager;
             }
-            
+
         }
 
 
@@ -378,7 +420,7 @@ namespace LibIOCP.DataProtocol
         /// 发送原始数据
         /// </summary>
         /// <param name="data"></param>
-        public virtual DataPacketBase SendRaw(byte[] data) 
+        public virtual DataPacketBase SendRaw(byte[] data)
         {
             DataPacketBase dp = new DataPacketBase();
             dp.IsRaw = true;
@@ -412,7 +454,7 @@ namespace LibIOCP.DataProtocol
                 }
 
 
-                
+
                 lock (_lokRootObject)
                 {
                     dataPacket = _dataManager.GetData();
@@ -422,19 +464,19 @@ namespace LibIOCP.DataProtocol
                     return;
                 }
                 Socket socket = null;
-                
+
                 try
                 {
                     byte[] data = null;
-                    if (dataPacket.IsRaw) 
+                    if (dataPacket.IsRaw)
                     {
-                        data =dataPacket.Data;
+                        data = dataPacket.Data;
                     }
-                    else 
+                    else
                     {
                         data = _netProtocol.ToArray(dataPacket);
                     }
-
+                    //data= GetSendData(data);
                     //if (_isWebsocketHandShanked)
                     //{
                     //    data = ProtocolDraft10.PackageServerData(data, dataPacket.WebSocketMessageType, dataPacket.WebSocketMask);
@@ -445,13 +487,16 @@ namespace LibIOCP.DataProtocol
                     }
                     sendSocketAsync = new SocketAsyncEventArgs();
                     sendSocketAsync.AcceptSocket = _bindSocket;
-                    sendSocketAsync.Completed += new EventHandler<SocketAsyncEventArgs>(OnCompleted);
+                    if (_certConfig == null)
+                    {
+                        sendSocketAsync.Completed += new EventHandler<SocketAsyncEventArgs>(OnCompleted);
+                    }
                     sendSocketAsync.SetBuffer(data, 0, data.Length);
 
                     sendSocketAsync.UserToken = dataPacket;
                     if (socket != null && Connected)
                     {
-                        isSync = socket.SendAsync(sendSocketAsync);
+                        isSync = SendAsync(socket, sendSocketAsync);
                     }
                     LastSendTime = DateTime.Now;
                 }
@@ -467,7 +512,7 @@ namespace LibIOCP.DataProtocol
                 {
                     dataPacket = null;
 
-                    
+
                     socket = null;
                 }
 
@@ -483,18 +528,57 @@ namespace LibIOCP.DataProtocol
             finally
             {
                 IsSend = false;
-                if (!isSync) 
+                if (!isSync)
                 {
                     DoSocketSend(sendSocketAsync);
 
                 }
                 sendSocketAsync = null;
             }
+        }
+
+        private bool SendAsync(Socket socket, SocketAsyncEventArgs sendSocketAsync)
+        {
+            if (_certConfig == null)
+            {
+                return socket.SendAsync(sendSocketAsync);
+            }
+            _tlsStream.BeginWrite(sendSocketAsync.Buffer, 0, sendSocketAsync.Buffer.Length, SendCallback, sendSocketAsync);
+            //_tlsStream.WriteAsync(sendSocketAsync.Buffer, 0, sendSocketAsync.Buffer.Length, CancellationToken.None).ConfigureAwait(continueOnCapturedContext: false); ;
+            return true;
+        }
+        public void SendCallback(IAsyncResult ar)
+        {
+            SocketAsyncEventArgs sendSocketAsync = ar.AsyncState as SocketAsyncEventArgs;
+            _tlsStream.EndWrite(ar);
+            //_tlsStream.Flush();
+            DoSocketSend(sendSocketAsync);
+        }
+
+
+        private byte[] GetSendData(byte[] data)
+        {
+            //if (_certConfig==null)
+            //{
+            //    return data;
+            //}
+            //if (_sslSendStream == null)
+            //{
+            //    LoadCertificate(_certConfig);
+            //}
+
+            //_bufferSendSSL.SetLength(0);
+            //using (SslStream ssl = _certConfig.CreateStream(_bufferSendSSL, _isServerSocket))
+            //{
+            //    ssl.Write(data, 0, data.Length);
+            //    ssl.Flush();
+            //    return _bufferSendSSL.ToArray();
+
+            //}
+            return data;
 
 
         }
-
-        
 
         /// <summary>
         /// 发送失败
@@ -541,11 +625,12 @@ namespace LibIOCP.DataProtocol
 
             try
             {
-                if (!socket.ReceiveAsync(eventArgs))
+                if (!ReceiveAsync(socket,eventArgs))
                 {
-                    DoSocketReceive(eventArgs);
+                    DoSocketReceive(eventArgs,-1);
                 }
             }
+           
             catch (Exception ex)
             {
                 if (ShowError)
@@ -556,6 +641,48 @@ namespace LibIOCP.DataProtocol
             eventArgs = null;
             socket = null;
         }
+
+        private bool ReceiveAsync(Socket socket,SocketAsyncEventArgs eventArgs) 
+        {
+            if(_certConfig == null) 
+            {
+                return socket.ReceiveAsync(eventArgs);
+            }
+            try
+            {
+                _tlsStream.BeginRead(eventArgs.Buffer, 0, eventArgs.Buffer.Length, ReadCallback, eventArgs);
+            }catch(Exception ex) 
+            {
+                Close();
+                HandleClose("Client Close");
+                return true;
+            }
+            return true;
+        }
+
+        public void ReadCallback(IAsyncResult ar) 
+        {
+            SocketAsyncEventArgs eventArgs = ar.AsyncState as SocketAsyncEventArgs;
+            try
+            {
+                int readCount = _tlsStream.EndRead(ar);
+                //if (readCount <= 0)
+                //{
+                //    Receive();
+                //    return;
+                //}
+                DoSocketReceive(eventArgs, readCount);
+            }
+            catch (Exception ex)
+            {
+                Close();
+                HandleClose("Client Close");
+              
+            }
+        }
+
+
+
         /// <summary>
         /// 检查数据重发
         /// </summary>
@@ -643,13 +770,16 @@ namespace LibIOCP.DataProtocol
         /// 处理接收
         /// </summary>
         /// <param name="e"></param>
-        private void DoSocketReceive(SocketAsyncEventArgs e)
+        private void DoSocketReceive(SocketAsyncEventArgs e,int count=-1)
         {
-            
+
+            if (count < 0) 
+            {
+                count = e.BytesTransferred;
+            }
 
 
-
-            if (e.BytesTransferred <= 0 || e.Buffer == null)
+            if (count <= 0 || e.Buffer == null)
             {
                 Close();
                 HandleClose("Client Close");
@@ -673,22 +803,17 @@ namespace LibIOCP.DataProtocol
                     {
                         return;
                     }
-                    bufferData.AppendBytes(e.Buffer, e.Offset, e.BytesTransferred);
+                    AppendToBuffer(bufferData,e.Buffer, e.Offset, count);
 
                     LastReceiveTime = DateTime.Now;
-                    if (socket.Available == 0)
+                    if (socket.Available == 0 || _certConfig!=null)
                     {
 
                         DataPacketBase dataPacket = null;
-
-                       
                         while (_netProtocol.IsDataLegal(out dataPacket, this))
                         {
                             DoDataPacket(dataPacket, recDate);
                         }
-
-
-
                     }
 
                 }
@@ -706,6 +831,21 @@ namespace LibIOCP.DataProtocol
             }
         }
 
+
+
+
+
+        /// <summary>
+        /// 读入到缓冲区
+        /// </summary>
+        /// <param name="bufferData">缓冲数组</param>
+        /// <param name="socketBuffer">socket缓冲</param>
+        /// <param name="offest">位置</param>
+        /// <param name="count">数值</param>
+        protected virtual void AppendToBuffer(NetByteBuffer bufferData, byte[] socketBuffer, int offest, int count)
+        {
+            bufferData.AppendBytes(socketBuffer, offest, count);
+        }
 
 
         ///// <summary>
@@ -853,18 +993,52 @@ namespace LibIOCP.DataProtocol
                 
             }
             eventArgs = null;
-            if (_bufferData != null)
+            lock (_lokBuffdata)
             {
-                lock (_lokBuffdata)
+                NetByteBuffer bufferData = _bufferData;
+                if (bufferData != null)
                 {
-                    _bufferData.Dispose();
-                    _bufferData = null;
+                    try
+                    {
+                        bufferData.Dispose();
+                    }
+                    catch { }
                 }
+                bufferData = null;
+                _bufferData = null;
+
+                SslStream sslStream = _tlsStream;
+                if (sslStream != null)
+                {
+                    try
+                    {
+                        sslStream.Close();
+                        sslStream.Dispose();
+                    }
+                    catch { }
+                }
+                sslStream = null;
+                _tlsStream = null;
+
+                NetworkStream netStream = _netStream;
+                if (netStream != null)
+                {
+                    netStream.Close();
+                    netStream.Dispose();
+                }
+                _netStream = null;
+                netStream = null;
             }
             _message = null;
             
             _remoteIP = null;
-            EventHandleClean.ClearAllEvents(this);
+            try
+            {
+                EventHandleClean.ClearAllEvents(this);
+            }
+            catch (Exception)
+            {
+            }
         }
 
         internal void HandleClose(String str)
