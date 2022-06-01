@@ -118,7 +118,6 @@ namespace LibIOCP.DataProtocol
         /// <returns>是否进行下一次判断</returns>
         public bool IsDataLegal(out DataPacketBase recPacket, ClientSocketBase socket)
         {
-            Console.WriteLine("有数据");
             NetByteBuffer buffer = socket.BufferData;
             DataManager dataManager = socket.DataManager;
             recPacket = null;
