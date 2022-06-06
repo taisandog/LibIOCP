@@ -17,37 +17,11 @@ namespace LibIOCP
         /// <summary>
         /// 存储数据的字典
         /// </summary>
-        private IDictionary<T, NodeValue<T, K>> _dic = null;
+        private IDictionary<T, LinkedListNode<KeyValuePair<T, K>>> _dic = null;
         /// <summary>
-        /// 头部节点
+        /// 存储数据的字典
         /// </summary>
-        private NodeValue<T, K> _headNode;
-        /// <summary>
-        /// 尾部节点
-        /// </summary>
-        private NodeValue<T, K> _lastNode;
-
-        /// <summary>
-        /// 最老的节点
-        /// </summary>
-        public NodeValue<T, K> OldestNode
-        {
-            get
-            {
-                return _headNode;
-            }
-        }
-        /// <summary>
-        /// 最新的节点
-        /// </summary>
-        public NodeValue<T, K> ActiveNode
-        {
-            get
-            {
-                return _lastNode;
-            }
-        }
-
+        private LinkedList<KeyValuePair<T, K>> _lk = null;
         /// <summary>
         /// get值时候是否触发
         /// </summary>
@@ -57,16 +31,16 @@ namespace LibIOCP
         /// </summary>
         /// <param name="dic">托管的字典</param>
         /// <param name="isGetToUpdate">Get值时候是否要更新活跃度</param>
-        public LinkedDictionary(IDictionary<T, NodeValue<T, K>> dic, bool isGetToUpdate = true)
+        public LinkedDictionary(IDictionary<T, LinkedListNode<KeyValuePair<T, K>>> dic, bool isGetToUpdate = true)
         {
             _dic = dic;
-
+            _lk = new LinkedList<KeyValuePair<T, K>>();
             _isGetToUpdate = isGetToUpdate;
         }
         /// <summary>
         /// 保存了活跃度的Dictionary
         /// </summary>
-        public LinkedDictionary(bool isGetToUpdate = true) : this(new Dictionary<T, NodeValue<T, K>>())
+        public LinkedDictionary(bool isGetToUpdate = true) : this(new Dictionary<T, LinkedListNode<KeyValuePair<T, K>>>(),isGetToUpdate)
         {
         }
 
@@ -81,26 +55,25 @@ namespace LibIOCP
         {
             get
             {
-                NodeValue<T, K> node = _dic[key];
+                LinkedListNode<KeyValuePair<T, K>> node = _dic[key];
                 if (_isGetToUpdate)
                 {
                     MoveToLast(node);
                 }
-                return node.Value;
+                return node.Value.Value;
             }
             set
             {
-                NodeValue<T, K> node = null;
+                LinkedListNode<KeyValuePair<T, K>> node = null;
                 if (_dic.TryGetValue(key, out node))
                 {
-                    node.Value = value;
+                    node.Value = new KeyValuePair<T, K>(key, value);
 
                     MoveToLast(node);
                 }
                 else
                 {
-                    node = new NodeValue<T, K>(key, value);
-                    AddToLast(node);
+                    node = _lk.AddLast(new KeyValuePair<T, K>(key, value));
                     _dic[key] = node;
                 }
 
@@ -111,127 +84,14 @@ namespace LibIOCP
         /// 把节点移动到最新
         /// </summary>
         /// <param name="node"></param>
-        private void MoveToLast(NodeValue<T, K> node)
+        private void MoveToLast(LinkedListNode<KeyValuePair<T, K>> node)
         {
-            //_lk.Remove(node);
-            //_lk.AddLast(node);
-            RemoveNode(node);
-            AddToLast(node);
+            _lk.Remove(node);
+            _lk.AddLast(node);
         }
 
-        /// <summary>
-        /// 增加到末尾
-        /// </summary>
-        /// <param name="node"></param>
-        private void AddToLast(NodeValue<T, K> node)
-        {
-            if (_headNode == null)
-            {
-                _headNode = node;
-            }
-            if (_lastNode == null)
-            {
-                _lastNode = node;
-            }
-            else
-            {
-                AddKey(_lastNode, node, false);
-            }
-        }
-        /// <summary>
-        /// 增加到末尾
-        /// </summary>
-        /// <param name="node"></param>
-        private void AddToHead(NodeValue<T, K> node)
-        {
-            if (_headNode == null)
-            {
-                _headNode = node;
-            }
-            else
-            {
-                AddKey(_headNode, node, true);
-            }
 
-            if (_lastNode == null)
-            {
-                _lastNode = node;
-            }
 
-        }
-        /// <summary>
-        /// 增加到之前
-        /// </summary>
-        /// <param name="node">上一个节点</param>
-        /// <param name="needInsertNode">当前要插入的节点</param>
-        /// <returns></returns>
-        private bool AddKey(NodeValue<T, K> node, NodeValue<T, K> needInsertNode, bool insertToFont)
-        {
-            if (insertToFont)
-            {
-                if (node.Previous != null)
-                {
-                    node.Previous.Next = needInsertNode;
-                }
-                needInsertNode.Previous = node.Previous;
-                node.Previous = needInsertNode;
-
-                needInsertNode.Next = node;
-
-                if (_headNode == node)
-                {
-                    _headNode = needInsertNode;
-                }
-            }
-            else
-            {
-                if (node.Next != null)
-                {
-                    node.Next.Previous = needInsertNode;
-                }
-                needInsertNode.Next = node.Next;
-                node.Next = needInsertNode;
-                needInsertNode.Previous = node;
-                if (_lastNode == node)
-                {
-                    _lastNode = needInsertNode;
-                }
-            }
-            return true;
-
-        }
-
-        /// <summary>
-        /// 移除节点
-        /// </summary>
-        /// <param name="key"></param>
-        /// <returns></returns>
-        private bool RemoveNode(NodeValue<T, K> node)
-        {
-            if (_headNode == node)
-            {
-                _headNode = node.Next;
-            }
-            if (_lastNode == node)
-            {
-                _lastNode = node.Previous;
-            }
-            if (node.Previous != null)
-            {
-                node.Previous.Next = node.Next;
-            }
-            if (node.Next != null)
-            {
-                node.Next.Previous = node.Previous;
-            }
-            node.Previous = null;
-            node.Next = null;
-            return true;
-        }
-
-        /// <summary>
-        /// 所有键
-        /// </summary>
         public ICollection<T> Keys
         {
             get
@@ -241,25 +101,19 @@ namespace LibIOCP
             }
         }
 
-        /// <summary>
-        /// 所有值
-        /// </summary>
         public ICollection<K> Values
         {
             get
             {
                 List<K> lst = new List<K>(_dic.Count);
-                foreach (KeyValuePair<T, NodeValue<T, K>> kvp in _dic)
+                foreach (KeyValuePair<T, LinkedListNode<KeyValuePair<T, K>>> kvp in _dic)
                 {
-                    lst.Add(kvp.Value.Value);
+                    lst.Add(kvp.Value.Value.Value);
                 }
                 return lst;
             }
         }
 
-        /// <summary>
-        /// 字典个数
-        /// </summary>
         public int Count
         {
             get
@@ -267,9 +121,7 @@ namespace LibIOCP
                 return _dic.Count;
             }
         }
-        /// <summary>
-        /// 是否只读
-        /// </summary>
+
         public bool IsReadOnly
         {
             get
@@ -287,9 +139,13 @@ namespace LibIOCP
             set { _isGetToUpdate = value; }
         }
 
-
-
-
+        /// <summary>
+        /// 活跃度信息
+        /// </summary>
+        public LinkedList<KeyValuePair<T, K>> TimeInfos
+        {
+            get { return _lk; }
+        }
         /// <summary>
         /// 添加一个带有所提供的键和值的元素
         /// </summary>
@@ -297,10 +153,10 @@ namespace LibIOCP
         /// <param name="value"></param>
         public void Add(T key, K value)
         {
-            NodeValue<T, K> node = new NodeValue<T, K>(key, value);
+            LinkedListNode<KeyValuePair<T, K>> node = new LinkedListNode<KeyValuePair<T, K>>(new KeyValuePair<T, K>(key, value));
 
             _dic.Add(key, node);
-            AddToLast(node);
+            _lk.AddLast(node);
         }
         /// <summary>
         /// 添加一个带有所提供的键和值的元素
@@ -308,9 +164,10 @@ namespace LibIOCP
         /// <param name="item">项</param>
         public void Add(KeyValuePair<T, K> item)
         {
-            NodeValue<T, K> node = new NodeValue<T, K>(item.Key, item.Value);
+            LinkedListNode<KeyValuePair<T, K>> node = new LinkedListNode<KeyValuePair<T, K>>(item);
+
             _dic.Add(item.Key, node);
-            AddToLast(node);
+            _lk.AddLast(node);
         }
 
         /// <summary>
@@ -319,8 +176,7 @@ namespace LibIOCP
         public void Clear()
         {
             _dic.Clear();
-            _headNode = null;
-            _lastNode = null;
+            _lk.Clear();
         }
 
         /// <summary>
@@ -339,7 +195,7 @@ namespace LibIOCP
         /// <returns></returns>
         public bool ContainsKey(T key)
         {
-            NodeValue<T, K> ret = null;
+            LinkedListNode<KeyValuePair<T, K>> ret = null;
 
             if (_dic.TryGetValue(key, out ret))
             {
@@ -360,13 +216,13 @@ namespace LibIOCP
         public void CopyTo(KeyValuePair<T, K>[] array, int arrayIndex)
         {
             int curIndex = arrayIndex;
-            foreach (KeyValuePair<T, NodeValue<T, K>> kvp in _dic)
+            foreach (KeyValuePair<T, LinkedListNode<KeyValuePair<T, K>>> kvp in _dic)
             {
                 if (curIndex >= array.Length)
                 {
                     break;
                 }
-                KeyValuePair<T, K> retKvp = new KeyValuePair<T, K>(kvp.Key, kvp.Value.Value);
+                KeyValuePair<T, K> retKvp = new KeyValuePair<T, K>(kvp.Key, kvp.Value.Value.Value);
                 array[curIndex] = retKvp;
                 curIndex++;
             }
@@ -389,33 +245,36 @@ namespace LibIOCP
         /// <returns></returns>
         public bool Remove(T key)
         {
-            NodeValue<T, K> ret = null;
+            LinkedListNode<KeyValuePair<T, K>> ret = null;
             bool isRemove = false;
-            if (_dic.TryGetValue(key, out ret))
-            {
+           
                 isRemove = _dic.Remove(key);
-                //_lk.Remove(ret);
-                RemoveNode(ret);
-            }
+                _lk.Remove(ret);
+
+            
             return isRemove;
         }
         /// <summary>
-        /// 删除键
+        /// 删除键并返回值
         /// </summary>
         /// <param name="key"></param>
         /// <returns></returns>
-        public K RemoveKey(T key,K defaultValue=default(K))
+        public K RemoveKey(T key)
         {
-            NodeValue<T, K> ret = null;
+            LinkedListNode<KeyValuePair<T, K>> retNode = null;
             bool isRemove = false;
-            if (_dic.TryGetValue(key, out ret))
+            if (_dic.TryGetValue(key, out retNode))
             {
                 isRemove = _dic.Remove(key);
-                //_lk.Remove(ret);
-                RemoveNode(ret);
-                return ret.Value;
+                _lk.Remove(retNode);
             }
-            return defaultValue;
+            if (!isRemove || retNode == null )
+            {
+                return default( K);
+            }
+            K ret = retNode.Value.Value;
+            retNode = null;
+            return ret;
         }
         /// <summary>
         /// 删除项
@@ -437,7 +296,7 @@ namespace LibIOCP
         /// <returns></returns>
         public bool TryGetValue(T key, out K value)
         {
-            NodeValue<T, K> ret = null;
+            LinkedListNode<KeyValuePair<T, K>> ret = null;
 
             if (_dic.TryGetValue(key, out ret))
             {
@@ -445,7 +304,7 @@ namespace LibIOCP
                 {
                     MoveToLast(ret);
                 }
-                value = ret.Value;
+                value = ret.Value.Value;
                 return true;
             }
             value = default(K);
@@ -466,15 +325,15 @@ namespace LibIOCP
         public void TrimCount(int count)
         {
             DateTime dt = DateTime.Now;
-            NodeValue<T, K> curNode = null;
+            LinkedListNode<KeyValuePair<T, K>> curNode = null;
             while (_dic.Count > count)
             {
-                curNode = _headNode;
+                curNode = _lk.First;
                 if (curNode == null)
                 {
                     break;
                 }
-                if (!Remove(curNode.Key))
+                if (!Remove(curNode.Value.Key))
                 {
                     break;
                 }
@@ -493,12 +352,12 @@ namespace LibIOCP
     /// <typeparam name="K"></typeparam>
     public class LinkedDictionaryEnumerator<T, K> : IEnumerator<KeyValuePair<T, K>>
     {
-        private IEnumerator<KeyValuePair<T, NodeValue<T, K>>> _enumTk;
+        private IEnumerator<KeyValuePair<T, LinkedListNode<KeyValuePair<T, K>>>> _enumTk;
         /// <summary>
         /// LRU字典的枚举
         /// </summary>
         /// <param name="enumTk">枚举器</param>
-        public LinkedDictionaryEnumerator(IEnumerator<KeyValuePair<T, NodeValue<T, K>>> enumTk)
+        public LinkedDictionaryEnumerator(IEnumerator<KeyValuePair<T, LinkedListNode<KeyValuePair<T, K>>>> enumTk)
         {
             _enumTk = enumTk;
         }
@@ -506,7 +365,7 @@ namespace LibIOCP
         {
             get
             {
-                return new KeyValuePair<T, K>(_enumTk.Current.Key, _enumTk.Current.Value.Value);
+                return new KeyValuePair<T, K>(_enumTk.Current.Key, _enumTk.Current.Value.Value.Value);
             }
         }
 
@@ -514,120 +373,23 @@ namespace LibIOCP
         {
             get
             {
-                return new KeyValuePair<T, K>(_enumTk.Current.Key, _enumTk.Current.Value.Value);
+                return new KeyValuePair<T, K>(_enumTk.Current.Key, _enumTk.Current.Value.Value.Value);
             }
         }
 
-
-        /// <summary>
-        /// 释放
-        /// </summary>
         public void Dispose()
         {
             _enumTk.Dispose();
         }
-        /// <summary>
-        /// 下一个
-        /// </summary>
-        /// <returns></returns>
+
         public bool MoveNext()
         {
             return _enumTk.MoveNext();
         }
-        /// <summary>
-        /// 重置
-        /// </summary>
+
         public void Reset()
         {
             _enumTk.Reset();
-        }
-    }
-
-    /// <summary>
-    /// 节点
-    /// </summary>
-    /// <typeparam name="T"></typeparam>
-    /// <typeparam name="K"></typeparam>
-    public class NodeValue<T, K>
-    {
-        /// <summary>
-        /// 节点
-        /// </summary>
-        /// <param name="key"></param>
-        /// <param name="value"></param>
-        public NodeValue(T key, K value)
-        {
-            _key = key;
-            _value = value;
-        }
-
-        private K _value;
-
-        private T _key;
-
-        private NodeValue<T, K> _next;
-        /// <summary>
-        /// 下一节点
-        /// </summary>
-        public NodeValue<T, K> Next
-        {
-            get
-            {
-                return _next;
-            }
-
-            internal set
-            {
-                _next = value;
-            }
-        }
-        private NodeValue<T, K> _previous;
-        /// <summary>
-        /// 上一节点
-        /// </summary>
-        public NodeValue<T, K> Previous
-        {
-            get
-            {
-                return _previous;
-            }
-
-            internal set
-            {
-                _previous = value;
-            }
-        }
-        /// <summary>
-        /// 键
-        /// </summary>
-        public T Key
-        {
-            get
-            {
-                return _key;
-            }
-
-
-        }
-        /// <summary>
-        /// 值
-        /// </summary>
-        public K Value
-        {
-            get
-            {
-                return _value;
-            }
-
-            internal set
-            {
-                this._value = value;
-            }
-        }
-
-        public override string ToString()
-        {
-            return "[" + Key + "," + Value + "]";
         }
     }
 }
