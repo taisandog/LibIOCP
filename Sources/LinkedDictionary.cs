@@ -247,10 +247,11 @@ namespace LibIOCP
         {
             LinkedListNode<KeyValuePair<T, K>> ret = null;
             bool isRemove = false;
-           
+            if (_dic.TryGetValue(key, out ret))
+            {
                 isRemove = _dic.Remove(key);
                 _lk.Remove(ret);
-
+            }
             
             return isRemove;
         }
@@ -281,13 +282,30 @@ namespace LibIOCP
         /// </summary>
         /// <param name="item"></param>
         /// <returns></returns>
-        public bool Remove(KeyValuePair<T, K> item)
+        public bool Remove(LinkedListNode<KeyValuePair<T, K>> item)
         {
-
-            return Remove(item.Key);
+            if(item == null) 
+            {
+                return true;
+            }
+            bool isRemove = _dic.Remove(item.Value.Key);
+            _lk.Remove(item);
+            return isRemove;
 
         }
+        /// <summary>
+        /// 删除项
+        /// </summary>
+        /// <param name="item"></param>
+        /// <returns></returns>
+        public bool Remove(KeyValuePair<T, K> item)
+        {
+            
+            bool isRemove = _dic.Remove(item.Key);
+            _lk.Remove(item);
+            return isRemove;
 
+        }
         /// <summary>
         /// 获取与指定键关联的值
         /// </summary>
@@ -333,7 +351,7 @@ namespace LibIOCP
                 {
                     break;
                 }
-                if (!Remove(curNode.Value.Key))
+                if (!Remove(curNode))
                 {
                     break;
                 }
