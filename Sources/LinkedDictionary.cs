@@ -358,7 +358,27 @@ namespace LibIOCP
             }
         }
 
+        /// <summary>
+        /// 最老的节点
+        /// </summary>
+        public LinkedListNode<KeyValuePair<T, K>> OldestNode 
+        {
+            get 
+            {
+                return _lk.First;
+            }
+        }
 
+        /// <summary>
+        /// 最新的节点
+        /// </summary>
+        public LinkedListNode<KeyValuePair<T, K>> LatestNode
+        {
+            get
+            {
+                return _lk.Last;
+            }
+        }
     }
 
 
