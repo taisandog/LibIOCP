@@ -12,6 +12,7 @@ namespace LibIOCP.DataProtocol
 {
     public class WebSocketClientSocket : ClientSocketBase
     {
+        
 
         protected NetByteBuffer _msMessage = null;
         /// <summary>
@@ -83,20 +84,56 @@ namespace LibIOCP.DataProtocol
            
         }
         
-        /// <summary>
-        /// 是否Websocket进行了首次传输
-        /// </summary>
-        private bool _hasWebSocketFirstTransfer = false;
 
         /// <summary>
         /// 是否Websocket进行了首次传输
         /// </summary>
         public bool HasWebSocketFirstTransfer
         {
-            get { return _hasWebSocketFirstTransfer; }
-            set { _hasWebSocketFirstTransfer = value; }
+            get { return _hanshakeInfo==null; }
+        }
+        /// <summary>
+        /// 握手信息
+        /// </summary>
+        private WebSocketHandshake _hanshakeInfo;
+        /// <summary>
+        /// 握手信息
+        /// </summary>
+        public WebSocketHandshake HanshakeInfo 
+        {
+            get { return _hanshakeInfo; }
         }
 
+        /// <summary>
+        /// 服务器握手
+        /// </summary>
+        /// <param name="content"></param>
+        /// <param name="start"></param>
+        /// <param name="count"></param>
+        /// <returns></returns>
+        public bool ServerHandshake(byte[] content, int start, int count) 
+        {
+            WebSocketHandshake hanshakeInfo = new WebSocketHandshake(content, start, count);
+            _hanshakeInfo = hanshakeInfo;
+            hanshakeInfo.IsSuccess = hanshakeInfo.HandshakeContent.ContainsKey("Sec-WebSocket-Key");
+            return hanshakeInfo.IsSuccess;
+            
+        }
+        /// <summary>
+        /// 服务器握手
+        /// </summary>
+        /// <param name="content"></param>
+        /// <param name="start"></param>
+        /// <param name="count"></param>
+        /// <returns></returns>
+        public bool ClientHandshake(byte[] content, int start, int count)
+        {
+            WebSocketHandshake hanshakeInfo = new WebSocketHandshake(content, start, count);
+            _hanshakeInfo = hanshakeInfo;
+            hanshakeInfo.IsSuccess = hanshakeInfo.HandshakeContent.ContainsKey("Sec-WebSocket-Accept");
+            return hanshakeInfo.IsSuccess;
+            
+        }
         public override void SendHeard()
         {
             SendPing();
@@ -127,7 +164,10 @@ namespace LibIOCP.DataProtocol
         /// <summary>
         /// 发送握手
         /// </summary>
-        public void SendHandShake(string host, string webSocketKey=null)
+        /// <param name="host">主机</param>
+        /// <param name="getParam">get内容参数</param>
+        /// <param name="webSocketKey">指定的webSocketKey</param>
+        public void SendHandShake(string host,string getParam=null, string webSocketKey=null)
         {
             if (string.IsNullOrWhiteSpace(webSocketKey))
             {
@@ -135,12 +175,32 @@ namespace LibIOCP.DataProtocol
 
                 webSocketKey = Convert.ToBase64String(sha1.ComputeHash(Guid.NewGuid().ToByteArray()));
             }
-            string handShakeStr = ProtocolDraft10.GetWebSocketHandShake(host, webSocketKey);
+            if (string.IsNullOrWhiteSpace(getParam)) 
+            {
+                getParam = "/";
+            }
+            string handShakeStr = ProtocolDraft10.GetWebSocketHandShake(host, getParam, webSocketKey);
             byte[] data = System.Text.Encoding.UTF8.GetBytes(handShakeStr);
 
             SendRaw(data);
         }
+        /// <summary>
+        /// 发送握手失败
+        /// </summary>
+        /// <param name="server">服务器(Server:)</param>
+        /// <param name="httpError">http标记错误，例如:HTTP/1.1 500 ServerError</param>
+        /// <param name="messparams">其他参数</param>
+        /// <param name="message">Ws_err_msg错误信息</param>
+        /// <param name="postData">其他内容</param>
+        public void SendHandShakeFail(string server=null, string httpError=null, IDictionary<string, string> messparams = null,
+            string message = null, string postData = null)
+        {
 
+            string handShakeStr = ProtocolDraft10.GetWebSocketHandShakeFail(server, httpError, messparams, message, postData);
+            byte[] data = System.Text.Encoding.UTF8.GetBytes(handShakeStr);
+
+            SendRaw(data);
+        }
         public DataPacketBase SendText(string text) 
         {
             byte[] data = Encoding.UTF8.GetBytes(text);
@@ -165,6 +225,12 @@ namespace LibIOCP.DataProtocol
                 }
                 catch { }
                 _msMessage = null;
+
+                if (_hanshakeInfo != null) 
+                {
+                    _hanshakeInfo.Dispose();
+                }
+                _hanshakeInfo = null;
             }
             base.Close();
         }

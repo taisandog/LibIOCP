@@ -202,6 +202,7 @@ namespace LibIOCP
             set { _certConfig = value; }
         }
 
+
         #region 方法
         /// <summary>
         /// 构造
@@ -214,7 +215,7 @@ namespace LibIOCP
         public ServerSocket(string ip, int port, int timeOut, int timeHreat, int timeResend, INetProtocol netProtocol=null, IConnectMessage message=null)
             :this(ip,port,new HeartManager(timeOut, timeHreat, timeResend, message),netProtocol,message)
         {
-
+            _createHeardmanager=true;
         }
 
         /// <summary>
@@ -314,13 +315,18 @@ namespace LibIOCP
             
             _socketAsyncEventArgs = new SocketAsyncEventArgs();
             _socketAsyncEventArgs.Completed += new EventHandler<SocketAsyncEventArgs>(AsyncAccept);
-            _listenSocket.AcceptAsync(_socketAsyncEventArgs);
-
+            if (!_listenSocket.AcceptAsync(_socketAsyncEventArgs))
+            {
+                AsyncAccept(listenSocket, _socketAsyncEventArgs);
+            }
             if (Util.HasShowLog(_message))
             {
                 _message.Log("Server start.");
             }
-            
+            if (_heardmanager != null && !_heardmanager.Running)
+            {
+                _heardmanager.StartHeart();
+            }
         }
 
        
@@ -360,6 +366,11 @@ namespace LibIOCP
                 }
                 EventHandleClean.ClearAllEvents(_listenSocket);
             }
+            if(_createHeardmanager && _heardmanager != null) 
+            {
+                _heardmanager.StopHeart();
+            }
+            //_heardmanager = null;
             _listenSocket = null;
             EventHandleClean.ClearAllEvents(_socketAsyncEventArgs);
             
@@ -403,7 +414,7 @@ namespace LibIOCP
                 clientSocket.OnError += ClientSocket_OnError;
                 if (OnMessage != null)
                 {
-                    clientSocket.OnMessage += ClientSocket_OnMessage;
+                    clientSocket.OnMessage += OnMessage;
                 }
 
                 if (OnAccept != null)
@@ -446,13 +457,14 @@ namespace LibIOCP
             }
         }
 
-        private void ClientSocket_OnMessage(ClientSocketBase clientSocket, string message)
-        {
-            if (OnMessage != null)
-            {
-                OnMessage(clientSocket,message);
-            }
-        }
+        //private bool ClientSocket_OnMessage( ClientSocketBase clientSocket, int type, object message)
+        //{
+        //    if (OnMessage != null)
+        //    {
+        //        return OnMessage(clientSocket, type, message);
+        //    }
+        //    return false;
+        //}
 
         private void ClientSocket_OnError(ClientSocketBase clientSocket, Exception ex)
         {

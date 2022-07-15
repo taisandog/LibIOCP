@@ -18,7 +18,7 @@ namespace LibIOCP.DataProtocol
 
         public int BufferLength
         {
-            get { return 1024; }
+            get { return 2048; }
         }
 
         /// <summary>
@@ -110,6 +110,7 @@ namespace LibIOCP.DataProtocol
             return packet;
 
         }
+        public const int HandshakeType = 0x100;
 
         private object _lokRootObject = new object();
         /// <summary>
@@ -122,19 +123,23 @@ namespace LibIOCP.DataProtocol
             DataManager dataManager = socket.DataManager;
             recPacket = null;
             WebSocketClientSocket wsocket = socket as WebSocketClientSocket;
-            if(wsocket == null)
+            if(wsocket == null || !wsocket.Connected)
             {
                 return false;
             }
-            if (!wsocket.HasWebSocketFirstTransfer) 
+            if (wsocket.HasWebSocketFirstTransfer) 
             {
                 byte[] allData=new byte[buffer.Count];
                 buffer.ReadBytes(0, allData, 0, allData.Length);
                 if (wsocket.IsServerSocket)
                 {
-                    if (ProtocolDraft10.IsWebSocketHandShake(allData, 0, allData.Length))
+                    if (wsocket.ServerHandshake(allData,0, allData.Length))
                     {
-                        ProtocolDraft10.ResponseWebSocketHandShake(allData, wsocket);//握手
+                        int retInt = socket.PutMessageEvent(HandshakeType, null);
+                        if (retInt != 0)
+                        {
+                            ProtocolDraft10.ResponseWebSocketHandShake(wsocket.HanshakeInfo, wsocket);//握手
+                        }
                     }
                     else 
                     {
@@ -144,14 +149,16 @@ namespace LibIOCP.DataProtocol
                 }
                 else
                 {
-                    if (!ProtocolDraft10.IsHandShakeResponse(allData, 0, allData.Length))
+                    if (!wsocket.ClientHandshake(allData, 0, allData.Length))
                     {
+                        socket.PutMessageEvent(HandshakeType, null);
                         wsocket.Close();
                         return false;
                     }
+                    socket.PutMessageEvent(HandshakeType, null);
                 }
                 buffer.RemoveHeadBytes(allData.Length);
-                wsocket.HasWebSocketFirstTransfer = true;
+                //wsocket.HasWebSocketFirstTransfer = true;
                 return true;
             }
 

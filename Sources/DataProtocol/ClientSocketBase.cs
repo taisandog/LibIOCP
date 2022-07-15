@@ -35,7 +35,7 @@ namespace LibIOCP.DataProtocol
     /// <summary>
     /// 一般通知事件
     /// </summary>
-    public delegate void NormalMessageHandle(ClientSocketBase clientSocket, string message);
+    public delegate bool NormalMessageHandle(ClientSocketBase clientSocket,int type, object message);
     /// <summary>
     /// 连接处理错误
     /// </summary>
@@ -267,10 +267,10 @@ namespace LibIOCP.DataProtocol
         /// 异步接收事件
         /// </summary>
         protected SocketAsyncEventArgs RecevieSocketAsync;
-        ///// <summary>
-        ///// 异步发送
-        ///// </summary>
-        //protected SocketAsyncEventArgs SendSocketAsync;
+        /// <summary>
+        /// 异步发送
+        /// </summary>
+        protected SocketAsyncEventArgs SendSocketAsync;
 
         /// <summary>
         /// 是否正在发送
@@ -368,6 +368,11 @@ namespace LibIOCP.DataProtocol
                 RecevieSocketAsync.Completed += new EventHandler<SocketAsyncEventArgs>(OnRecCompleted);
             }
             RecevieSocketAsync.SetBuffer(new byte[buffLen], 0, buffLen);
+
+            SendSocketAsync = new SocketAsyncEventArgs();
+            SendSocketAsync.AcceptSocket = BindSocket;
+            SendSocketAsync.Completed += new EventHandler<SocketAsyncEventArgs>(OnCompleted);
+
             LastSendTime = DateTime.Now;
             LastReceiveTime = DateTime.Now;
             //SocketCount++;
@@ -395,13 +400,13 @@ namespace LibIOCP.DataProtocol
                 if (Connected)
                 {
                     string err = _dataManager.AddData(dataPacket);
-                    if (err != null && OnMessage != null)
+                    if (err != null )
                     {
-                        OnMessage(this, err);
+                        PutMessageEvent(1, err);
                     }
                 }
             }
-            Send();
+            Send(SendSocketAsync);
         }
         /// <summary>
         /// 发送字节数组
@@ -432,7 +437,7 @@ namespace LibIOCP.DataProtocol
         /// 发送
         /// </summary>
         /// <param name="isAsync">是否异步发送</param>
-        protected void Send()
+        protected void Send(SocketAsyncEventArgs sendSocketAsync)
         {
             lock (_lokSend)
             {
@@ -444,7 +449,7 @@ namespace LibIOCP.DataProtocol
             }
             bool isSync = true;
             DataPacketBase dataPacket = null;
-            SocketAsyncEventArgs sendSocketAsync = null;
+            
             try
             {
 
@@ -485,14 +490,10 @@ namespace LibIOCP.DataProtocol
                     {
                         socket = _bindSocket;
                     }
-                    sendSocketAsync = new SocketAsyncEventArgs();
-                    sendSocketAsync.AcceptSocket = _bindSocket;
-                    if (_certConfig == null)
-                    {
-                        sendSocketAsync.Completed += new EventHandler<SocketAsyncEventArgs>(OnCompleted);
-                    }
+                    sendSocketAsync.AcceptSocket = socket;
+                    
                     sendSocketAsync.SetBuffer(data, 0, data.Length);
-
+                    sendSocketAsync.UserToken = null;
                     sendSocketAsync.UserToken = dataPacket;
                     if (socket != null && Connected)
                     {
@@ -511,8 +512,11 @@ namespace LibIOCP.DataProtocol
                 finally
                 {
                     dataPacket = null;
-
-
+                    
+                    if (!isSync) 
+                    {
+                        OnCompleted(this, sendSocketAsync);
+                    }
                     socket = null;
                 }
 
@@ -527,12 +531,16 @@ namespace LibIOCP.DataProtocol
             }
             finally
             {
-                IsSend = false;
+                lock (_lokSend)
+                {
+                    IsSend = false;
+                }
+
                 if (!isSync)
                 {
                     DoSocketSend(sendSocketAsync);
-
                 }
+               
                 sendSocketAsync = null;
             }
         }
@@ -573,17 +581,29 @@ namespace LibIOCP.DataProtocol
                 if (Connected && !_dataManager.IsSendPacketFull)
                 {
                     string err = _dataManager.AddData(dataPacket);
-                    if (err != null && OnMessage != null)
+                    if (err != null )
                     {
-                        OnMessage(this, err);
+                        PutMessageEvent(1, err);
                     }
                 }
             }
-
-
-
         }
 
+        /// <summary>
+        /// 触发消息事件
+        /// </summary>
+        /// <param name="clientSocket"></param>
+        /// <param name="type"></param>
+        /// <param name="message"></param>
+        /// <returns></returns>
+        public int PutMessageEvent(int type, object message) 
+        {
+            if ( OnMessage != null)
+            {
+                return OnMessage(this, type, message)?1:0;
+            }
+            return -1;
+        }
 
         /// <summary>
         /// 接收
@@ -732,14 +752,13 @@ namespace LibIOCP.DataProtocol
         /// <param name="e"></param>
         private void DoSocketSend(SocketAsyncEventArgs e)
         {
-            if (_netProtocol.ShowLog)
-            {
-                _netProtocol.Log("Send Success");
-            }
 
-            LastSendTime = DateTime.Now;
-            IsSend = false;
-            Send();
+            //LastSendTime = DateTime.Now;
+            lock (_lokSend)
+            {
+                IsSend = false;
+            }
+            Send(e);
         }
 
         //protected bool _isWebsocketHandShanked = false;
@@ -760,7 +779,7 @@ namespace LibIOCP.DataProtocol
             if (count <= 0 || e.Buffer == null)
             {
                 Close();
-                HandleClose("Client Close");
+                HandleClose("Client Close:"+ e.SocketError);
                 return;
             }
             if (!Connected)
@@ -790,7 +809,10 @@ namespace LibIOCP.DataProtocol
                         DataPacketBase dataPacket = null;
                         while (_netProtocol.IsDataLegal(out dataPacket, this))
                         {
-                            DoDataPacket(dataPacket, recDate);
+                            if (dataPacket != null)
+                            {
+                                DoDataPacket(dataPacket, recDate);
+                            }
                         }
                     }
 
@@ -832,7 +854,7 @@ namespace LibIOCP.DataProtocol
 
         public virtual void DoDataPacket(DataPacketBase dataPacket, DateTime recDate)
         {
-            if (dataPacket != null && OnReceiveData != null)
+            if ( OnReceiveData != null)
             {
                 OnReceiveData(this, dataPacket);
             }
@@ -902,7 +924,7 @@ namespace LibIOCP.DataProtocol
             catch { }
             Socket socket = null;
             SocketAsyncEventArgs eventArgs = null;
-
+            SocketAsyncEventArgs eventSendArgs = null;
             lock (_lokRootObject)
             {
 
@@ -922,7 +944,8 @@ namespace LibIOCP.DataProtocol
                     catch (Exception)
                     {
                     }
-                    
+
+
                 }
                 _dataManager = null;
                 if (RecevieSocketAsync != null)
@@ -930,6 +953,12 @@ namespace LibIOCP.DataProtocol
                     eventArgs = RecevieSocketAsync;
                    
                     RecevieSocketAsync = null;
+                }
+                if (SendSocketAsync != null)
+                {
+                    eventSendArgs = SendSocketAsync;
+
+                    SendSocketAsync = null;
                 }
             }
             if (socket != null)
@@ -949,7 +978,6 @@ namespace LibIOCP.DataProtocol
                 try
                 {
 
-                    EventHandleClean.ClearAllEvents(eventArgs);
                     eventArgs.Dispose();
 
                 }
@@ -959,6 +987,23 @@ namespace LibIOCP.DataProtocol
                 
             }
             eventArgs = null;
+
+            if (eventSendArgs != null)
+            {
+                try
+                {
+
+                    eventSendArgs.Dispose();
+
+                }
+                catch (Exception)
+                {
+                }
+
+            }
+            eventSendArgs = null;
+
+
             lock (_lokBuffdata)
             {
                 NetByteBuffer bufferData = _bufferData;

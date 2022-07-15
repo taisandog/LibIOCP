@@ -1,4 +1,6 @@
-﻿using LibIOCP.DataProtocol;
+﻿using Buffalo.Kernel;
+using Buffalo.Kernel.Collections;
+using LibIOCP.DataProtocol;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -13,7 +15,7 @@ namespace LibIOCP
     /// </summary>
     public class HeartManager
     {
-       
+
 
         /// <summary>
         /// 超时时间
@@ -54,18 +56,19 @@ namespace LibIOCP
             }
         }
         private AutoResetEvent _threadHandle;
-        public ConcurrentDictionary<ClientSocketBase, bool> Clients
+        private TimelineManager _clients = null;
+        public TimelineManager Clients
         {
             get
             {
                 return _clients;
             }
         }
-        private bool _needSendheart=true;
+        private bool _needSendheart = true;
         /// <summary>
         /// 是否需要主动发心跳
         /// </summary>
-        public bool NeedSendheart 
+        public bool NeedSendheart
         {
             get { return _needSendheart; }
             set { _needSendheart = value; }
@@ -74,7 +77,7 @@ namespace LibIOCP
         /// 客户端数
         /// </summary>
         //public List<ClientSocket> Clients;
-        private ConcurrentDictionary<ClientSocketBase, bool> _clients = new ConcurrentDictionary<ClientSocketBase, bool>();
+       
 
         /// <summary>
         /// 检查线程
@@ -90,14 +93,14 @@ namespace LibIOCP
         public HeartManager(int timeOut, int timeHreat, int timeResend, IConnectMessage message)
         {
             //_clients = new ConcurrentDictionary<ClientSocket, bool>();
-           
+
             TimeResend = timeResend;
             TimeOut = timeOut;
             TimeHeart = timeHreat;
             _message = message;
             
         }
-       
+
         /// <summary>
         /// 连接是否存在
         /// </summary>
@@ -105,7 +108,7 @@ namespace LibIOCP
         /// <returns></returns>
         public bool ExistsClient(ClientSocketBase client)
         {
-            return _clients.ContainsKey(client);
+            return _clients.Clients.ContainsKey(client);
         }
 
         /// <summary>
@@ -114,12 +117,13 @@ namespace LibIOCP
         /// <param name="client"></param>
         public bool AddClient(ClientSocketBase client)
         {
-            if (!_running) 
+            if (!_running)
             {
                 return false;
             }
-            bool ret=_clients.TryAdd(client,true);
             CheckRunning();
+            bool ret=_clients.AddClient(client);
+            
             return ret;
         }
         /// <summary>
@@ -146,38 +150,58 @@ namespace LibIOCP
         public void StartHeart()
         {
             StopHeart();
+            _clients = CreateTimelineManager();
+            _threadHandle = new AutoResetEvent(false);
             _running = true;
             CheckThread = new Thread(new ThreadStart(DoRun));
-            
+
             CheckThread.Start();
 
         }
         private bool _running = false;
+        /// <summary>
+        /// 运行中
+        /// </summary>
+        public bool Running 
+        {
+            get { return _running; }
+        }
+
+        public int Count 
+        {
+            get 
+            {
+                return _clients.Clients.Count;
+            }
+        }
         /// <summary>
         /// 关闭心跳管理
         /// </summary>
         public void StopHeart()
         {
             _running = false;
-            if (CheckThread == null)
-            {
-                return;
-            }
+            
             try
             {
-                if (_threadHandle!=null && !_threadHandle.WaitOne(5000)) 
+                if (CheckThread!=null )
                 {
-                    try
+                    if(!StopCheckThreadSuccess()) 
                     {
-                        CheckThread.Abort();
-                        Thread.Sleep(100);
+                        try
+                        {
+                            CheckThread.Abort();
+                            Thread.Sleep(100);
+                        }
+                        catch { }
                     }
-                    catch { }
-                    
                 }
-                _threadHandle = null;
                 CheckThread = null;
-                
+                _threadHandle = null;
+                if (_clients != null) 
+                {
+                    _clients.Dispose();
+                }
+                _clients = null;
             }
             catch (Exception ex)
             {
@@ -186,167 +210,276 @@ namespace LibIOCP
                 //    _message.LogWarning("关闭心跳管理EX:" + ex);
                 //}
             }
-            
+
 
         }
+
+        private bool StopCheckThreadSuccess()
+        {
+            if (_threadHandle == null)
+            {
+                return false;
+            }
+            return _threadHandle.WaitOne(3000);
+        }
+
+        /// <summary>
+        /// 创建时间线
+        /// </summary>
+        /// <returns></returns>
+        private TimelineManager CreateTimelineManager() 
+        {
+            int pertimeResend = 0;
+
+            pertimeResend = TimeResend / 10;
+            if (pertimeResend <= 0)
+            {
+                pertimeResend = TimeHeart / 10;
+            }
+            if (pertimeResend <= 0)
+            {
+                pertimeResend = TimeOut / 10;
+            }
+            
+            if (pertimeResend > 200)
+            {
+                pertimeResend = 200;
+            }
+            if (pertimeResend < 10)
+            {
+                pertimeResend = 10;
+            }
+            TimelineManager time = new TimelineManager(TimeResend, TimeHeart, TimeOut, pertimeResend);
+            long nowtime = (long)CommonMethods.ConvertDateTimeInt(DateTime.Now, false, true);
+            time.Reset(nowtime);
+            return time;
+        }
+
         /// <summary>
         /// 删除心跳管理的连接
         /// </summary>
         /// <param name="socket"></param>
         public bool RemoveSocket(ClientSocketBase socket)
         {
-            bool ret = false;
-            return _clients.TryRemove(socket, out ret);
+            return _clients.RemoveSocket(socket);
         }
         private void DoRun()
         {
-            int pertimeResend = 0;
-
-            pertimeResend = TimeResend / 2;
-            if (pertimeResend <= 0) 
-            {
-                pertimeResend = TimeHeart / 2;
-            }
-            if (pertimeResend <= 0)
-            {
-                pertimeResend = TimeOut / 2;
-            }
-            if (pertimeResend <= 0)
-            {
-                return;
-            }
+            int sleep = _clients.Scale;
             try
             {
-                _threadHandle = new AutoResetEvent(false);
+                
                 _threadHandle.Reset();
-                ClientSocketBase connection = null;
-                Queue<ClientSocketBase> lstremovelist =null;
-                Queue<ClientSocketBase> lstcloselist = null;
-                DateTime dtLast=DateTime.MinValue;
-                DateTime nowDate = DateTime.MinValue;
+                Queue<ClientSocketBase> lstremovelist = new Queue<ClientSocketBase>();
+                Queue<ClientSocketBase> lstcloselist = new Queue<ClientSocketBase>();
+                Queue<ConcurrentDictionary<ClientSocketBase, bool>> queItems = new Queue<ConcurrentDictionary<ClientSocketBase, bool>>();
+                DateTime nowDate = DateTime.Now;
+                long time = (long)CommonMethods.ConvertDateTimeInt(nowDate, false, true);
+                _clients.Reset(time);
                 while (_running)
                 {
-                    nowDate = DateTime.Now;
-                    if (_clients.Count > 0 && nowDate.Subtract(dtLast).TotalMilliseconds >= pertimeResend)
+                    try
                     {
-                        lstremovelist = new Queue<ClientSocketBase>();
-                        lstcloselist = new Queue<ClientSocketBase>();
-                        try
-                        {
-                            foreach (KeyValuePair<ClientSocketBase, bool> kvp in _clients)
-                            {
-                                if (!_running)
-                                {
-                                    break;
-                                }
-                                connection = kvp.Key;
-                                if (connection == null)
-                                {
-                                    continue;
-                                }
-                                if (!connection.Connected)//空连接
-                                {
-                                    lstremovelist.Enqueue(connection);
-                                    continue;
-                                }
-                                if (_needSendheart && TimeHeart > 0 && nowDate.Subtract(connection.LastSendTime).TotalMilliseconds > TimeHeart)
-                                {
-                                    connection.SendHeard();
-                                    continue;
-                                }
-                                else if (TimeOut > 0 && nowDate.Subtract(connection.LastReceiveTime).TotalMilliseconds > TimeOut)
-                                {
-                                    lstcloselist.Enqueue(connection);
-                                    continue;
-                                }
-
-                                try
-                                {
-                                    if (TimeResend > 0)
-                                    {
-                                        connection.DataManager.CheckResend(TimeResend);
-                                    }
-                                }
-                                catch { }
-
-                            }
-                            bool ret = false;
-                            foreach (ClientSocketBase conn in lstremovelist)
-                            {
-                                if (!_running)
-                                {
-                                    break;
-                                }
-                                conn.HandleClose("Destroy invalid connection:" + conn.HostIP);//通知断开
-                                _clients.TryRemove(conn, out ret);
-
-                            }
-                            if (Util.HasShowWarning(_message) && lstremovelist.Count > 0)
-                            {
-                                if (_message.ShowWarning)
-                                {
-                                    _message.LogWarning("Clear destroyed connection:" + lstremovelist.Count);
-                                }
-                            }
-
-                            int tid = 0;
-                            foreach (ClientSocketBase conn in lstcloselist)
-                            {
-                                if (!_running)
-                                {
-                                    break;
-                                }
-                                conn.HandleClose("Connection timedout:" + conn.HostIP);//通知断开
-                                conn.Close();
-                                _clients.TryRemove(conn, out ret);
-                                if (Util.HasShowWarning(_message))
-                                {
-                                    string key = conn.SocketKey;
-                                    tid = 0;
-                                    if (!string.IsNullOrWhiteSpace(key))
-                                    {
-                                        try
-                                        {
-                                            tid = Convert.ToInt32(conn.SocketKey, 16);
-                                        }
-                                        catch { }
-                                    }
-                                    if (_message.ShowWarning)
-                                    {
-                                        StringBuilder sb = new StringBuilder(50);
-                                        sb.Append("Connection timedout:ID:");
-                                        sb.Append(tid);
-                                        sb.Append(",IP:");
-                                        sb.Append(conn.HostIP);
-                                        _message.LogWarning(sb.ToString());
-                                    }
-                                }
-
-                            }
-                            
-
-
-                        }
-                        catch { }
-                        finally
-                        {
-                            dtLast = nowDate;
-                            lstremovelist.Clear();
-                            lstremovelist = null;
-                            lstcloselist.Clear();
-                            lstcloselist = null;
-                        }
-                        
-                        
+                        nowDate = DateTime.Now;
+                        time = (long)CommonMethods.ConvertDateTimeInt(nowDate, false, true);
+                        CheckResend(time, queItems, lstremovelist);
+                        CheckHeart(time, queItems, lstremovelist, nowDate);
+                        CheckTimeOut(time, queItems, lstremovelist, lstcloselist, nowDate);
                     }
-                    Thread.Sleep(200);
+                    catch (Exception ex)
+                    {
+                        _message.LogError(ex.ToString());
+                    }
+                    finally 
+                    {
+                        Thread.Sleep(sleep);
+                    }
                 }
+                lstremovelist = null;
+                lstcloselist=null;
+                queItems = null;
+               
+
             }
-            finally 
+            finally
             {
                 _threadHandle.Set();
             }
             CheckThread = null;
+        }
+
+        /// <summary>
+        /// 检查重发
+        /// </summary>
+        /// <param name="curTime"></param>
+        /// <param name="queItems"></param>
+        private void CheckResend(long curTime, Queue<ConcurrentDictionary<ClientSocketBase, bool>> queItems, Queue<ClientSocketBase> lstRemove) 
+        {
+            if (TimeResend < 0) 
+            {
+                return;
+            }
+            _clients.MoveToTimeResendTime(curTime, queItems);
+            ConcurrentDictionary<ClientSocketBase, bool> dic = null;
+            ClientSocketBase connection = null;
+            while (queItems.Count > 0)
+            {
+                dic = queItems.Dequeue();
+                foreach (KeyValuePair<ClientSocketBase, bool> kvp in dic)
+                {
+                    connection = kvp.Key;
+                    if (!connection.Connected)//空连接
+                    {
+                        lstRemove.Enqueue(connection);
+                        continue;
+                    }
+
+                    try
+                    {
+                        connection.DataManager.CheckResend(TimeResend);
+                    }
+                    catch { }
+                }
+                RemoveEmpty(lstRemove, dic);
+            }
+        }
+
+        /// <summary>
+        /// 检查心跳
+        /// </summary>
+        /// <param name="curTime"></param>
+        /// <param name="queItems"></param>
+        private void CheckHeart(long curTime, Queue<ConcurrentDictionary<ClientSocketBase, bool>> queItems, 
+            Queue<ClientSocketBase> lstRemove,DateTime nowDate)
+        {
+            if (TimeHeart < 0 || (!_needSendheart))
+            {
+                return;
+            }
+            _clients.MoveToTimeHeartTime(curTime, queItems);
+            ConcurrentDictionary<ClientSocketBase, bool> dic = null;
+            ClientSocketBase connection=null;
+            while (queItems.Count > 0)
+            {
+                dic = queItems.Dequeue();
+                foreach (KeyValuePair<ClientSocketBase, bool> kvp in dic)
+                {
+                    connection = kvp.Key;
+                    if (!connection.Connected)//空连接
+                    {
+                        lstRemove.Enqueue(connection);
+                        continue;
+                    }
+                    if (nowDate.Subtract(connection.LastSendTime).TotalMilliseconds > TimeHeart)
+                    {
+                        connection.SendHeard();
+                        continue;
+                    }
+                    
+                }
+                RemoveEmpty(lstRemove, dic);
+            }
+        }
+
+
+        /// <summary>
+        /// 检查过期
+        /// </summary>
+        /// <param name="curTime"></param>
+        /// <param name="queItems"></param>
+        private void CheckTimeOut(long curTime, Queue<ConcurrentDictionary<ClientSocketBase, bool>> queItems,
+            Queue<ClientSocketBase> lstRemove, Queue<ClientSocketBase> lstClose, DateTime nowDate)
+        {
+            if (TimeOut < 0 )
+            {
+                return;
+            }
+            _clients.MoveToTimeExpiredTime(curTime, queItems);
+            ConcurrentDictionary<ClientSocketBase, bool> dic = null;
+            ClientSocketBase connection = null;
+            while (queItems.Count > 0)
+            {
+                dic = queItems.Dequeue();
+                foreach (KeyValuePair<ClientSocketBase, bool> kvp in dic)
+                {
+                    connection = kvp.Key;
+                    if (!connection.Connected)//空连接
+                    {
+                        lstRemove.Enqueue(connection);
+                        continue;
+                    }
+                    if (nowDate.Subtract(connection.LastReceiveTime).TotalMilliseconds > TimeOut)
+                    {
+                        lstClose.Enqueue(connection);
+                        continue;
+                    }
+                }
+                RemoveEmpty(lstRemove, dic);
+                CloseConnection(lstClose, dic);
+            }
+        }
+
+        /// <summary>
+        /// 删除空连接
+        /// </summary>
+        /// <param name="lstRemove"></param>
+        /// <param name="dic"></param>
+        private void RemoveEmpty(Queue<ClientSocketBase> lstRemove, ConcurrentDictionary<ClientSocketBase, bool> dic)
+        {
+            ClientSocketBase connection = null;
+            int count = lstRemove.Count;
+            while (lstRemove.Count > 0)
+            {
+                connection = lstRemove.Dequeue();
+                connection.HandleClose("Destroy invalid connection:" + connection.HostIP);//通知断开
+                _clients.RemoveSocket(connection, dic);
+            }
+            if (Util.HasShowWarning(_message) && count > 0)
+            {
+                if (_message.ShowWarning)
+                {
+                    _message.LogWarning("Clear destroyed connection:" + count);
+                }
+            }
+        }
+        /// <summary>
+        /// 删除空连接
+        /// </summary>
+        /// <param name="lstRemove"></param>
+        /// <param name="dic"></param>
+        private void CloseConnection(Queue<ClientSocketBase> lstClose, ConcurrentDictionary<ClientSocketBase, bool> dic)
+        {
+            ClientSocketBase connection = null;
+            while (lstClose.Count > 0)
+            {
+                connection = lstClose.Dequeue();
+                connection.HandleClose("Connection timedout:" + connection.HostIP);//通知断开
+                connection.Close();
+                _clients.RemoveSocket(connection, dic);
+
+                if (Util.HasShowWarning(_message))
+                {
+                    string key = connection.SocketKey;
+                    int tid = 0;
+                    if (!string.IsNullOrWhiteSpace(key))
+                    {
+                        try
+                        {
+                            tid = Convert.ToInt32(connection.SocketKey, 16);
+                        }
+                        catch { }
+                    }
+                    if (_message.ShowWarning)
+                    {
+                        StringBuilder sb = new StringBuilder(50);
+                        sb.Append("Connection timedout:ID:");
+                        sb.Append(tid);
+                        sb.Append(",IP:");
+                        sb.Append(connection.HostIP);
+                        _message.LogWarning(sb.ToString());
+                    }
+                }
+            }
         }
     }
 

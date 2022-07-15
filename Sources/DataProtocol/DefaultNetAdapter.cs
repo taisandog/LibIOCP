@@ -260,16 +260,9 @@ namespace LibIOCP.DataProtocol
 
             //判断是不是回应包   
            
-            if (dataPacket.PIdValue <= 0)
+            if (dataPacket.IsHeart)
             {
-                if (ShowLog)
-                {
-                    if (_message != null)
-                    {
-                        return false;
-                    }
-                    
-                }
+                return true;
             }
             else
             {

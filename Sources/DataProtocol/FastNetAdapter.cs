@@ -207,14 +207,9 @@ namespace LibIOCP.DataProtocol
 
             //socket.LastReceiveTime = DateTime.Now;
 
-            if (packetId <= 0)//心跳包
-            {
-                
-                return false;
-            }
-
+            
             FastDataPacket dataPacket = Format(packetId, tempdata);
-
+            
             if (socket.HasReceiveDataHandle)
             {
                 lock (_lokRootObject)

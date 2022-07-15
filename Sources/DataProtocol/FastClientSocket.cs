@@ -147,16 +147,8 @@ namespace LibIOCP.DataProtocol
             {
                 if (dataPacket.IsHeart)
                 {
-                    //if (ShowLog)
-                    //{
-                    //    Log("心跳:" + recDate.ToString("yyyy-MM-dd HH:mm:ss.fff"));
-                    //}
                     return;
                 }
-                //if (ShowLog)
-                //{
-                //    Log("Socket接收:" + recDate.ToString("yyyy-MM-dd HH:mm:ss.fff"));
-                //}
                 RunReceiveData(dataPacket);
 
 

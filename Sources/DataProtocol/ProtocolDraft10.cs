@@ -57,45 +57,71 @@ namespace LibIOCP.DataProtocol
 
             return false;
         }
+
         /// <summary>
-        /// 是否WebSocket握手会放
+        /// 获取握手失败信息
         /// </summary>
-        /// <param name="content"></param>
+        /// <param name="server">服务器(Server:)</param>
+        /// <param name="httpError">http标记错误，例如:HTTP/1.1 500 ServerError</param>
+        /// <param name="messparams">其他参数</param>
+        /// <param name="message">Ws_err_msg错误信息</param>
+        /// <param name="postData">其他内容</param>
         /// <returns></returns>
-        public static bool IsHandShakeResponse(byte[] content, int start, int count)
+        public static string GetWebSocketHandShakeFail(string server,string httpError, IDictionary<string, string> messparams=null, string message=null,string postData=null)
         {
-            if (content.Length < 50)
+            StringBuilder sbRet = new StringBuilder();
+            if (string.IsNullOrWhiteSpace(httpError)) 
             {
-                return false;
+                httpError = "HTTP/1.1 500 ServerError";
             }
-            using (MemoryStream ms = new MemoryStream(content, start, count))
+            sbRet.AppendLine(httpError);
+            if (string.IsNullOrWhiteSpace(server)) 
             {
-                using (StreamReader reader = new StreamReader(ms, Encoding.UTF8))
+                server = "Kestrel";
+            }
+            sbRet.AppendLine("Server: " + server);
+            sbRet.AppendLine("Content-Type: text/plain; charset=utf-8");
+            if (!string.IsNullOrWhiteSpace(postData))
+            {
+                sbRet.AppendLine("Content-Length: " + postData.Length.ToString());
+            }
+            sbRet.AppendLine("Date: "+DateTime.Now);
+            
+            sbRet.AppendLine("Connection: keep-alive");
+            sbRet.AppendLine("Sec-Websocket-Version: 13");
+            if (!string.IsNullOrWhiteSpace(message))
+            {
+                sbRet.AppendLine("Ws_err_msg: " + System.Web.HttpUtility.UrlEncode(message));
+            }
+            sbRet.AppendLine("X-Content-Type-Options: nosniff");
+            if (messparams != null)
+            {
+                foreach (KeyValuePair<string, string> pair in messparams)
                 {
-                    string line = null;
-                    while ((line = reader.ReadLine()) != null)
-                    {
-                        if (line.IndexOf("Sec-WebSocket-Accept:", StringComparison.CurrentCultureIgnoreCase) >= 0)
-                        {
-                            return true;
-                        }
-                    }
+                    sbRet.AppendLine(pair.Key + ":" + System.Web.HttpUtility.UrlEncode(pair.Value));
                 }
             }
+            sbRet.AppendLine("");//必须有一行空行作为结尾
 
-            return false;
+            if (!string.IsNullOrWhiteSpace(postData))
+            {
+                sbRet.AppendLine(postData);
+                sbRet.AppendLine("");//必须有一行空行作为结尾
+            }
+
+            return sbRet.ToString();
         }
-        
+
         /// <summary>
         /// 获取WebSocket握手信息
         /// </summary>
         /// <param name="host">主机</param>
         /// <param name="webSocketKey">websocket key</param>
         /// <returns></returns>
-        public static string GetWebSocketHandShake(string host,string webSocketKey) 
+        public static string GetWebSocketHandShake(string host, string getParam, string webSocketKey) 
         {
             StringBuilder sbRet=new StringBuilder();
-            sbRet.AppendLine("GET / HTTP/1.1");
+            sbRet.AppendLine("GET "+ getParam + " HTTP/1.1");
             sbRet.AppendLine("Host: " + host);
             sbRet.AppendLine("Connection: Upgrade");
             //sbRet.AppendLine("Pragma: no-cache");
@@ -145,15 +171,16 @@ namespace LibIOCP.DataProtocol
         /// </summary>
         /// <param name="inputData">握手内容</param>
         /// <param name="socket">socket</param>
-        public static void ResponseWebSocketHandShake(byte[] inputByteData, ClientSocketBase socket)
+        public static void ResponseWebSocketHandShake(WebSocketHandshake hanshakeInfo, ClientSocketBase socket)
         {
-            string inputData = System.Text.Encoding.UTF8.GetString(inputByteData);
-            string inputKey = null;
-            Match m = _reg.Match(inputData);
-            if (m.Value != "")
-            {
-                inputKey = Regex.Replace(m.Value, @"Sec\-WebSocket\-Key:(.*?)\r\n", "$1").Trim();
-            }
+            //string inputData = System.Text.Encoding.UTF8.GetString(inputByteData);
+            //string inputKey = null;
+            //Match m = _reg.Match(inputData);
+            //if (m.Value != "")
+            //{
+            //    inputKey = Regex.Replace(m.Value, @"Sec\-WebSocket\-Key:(.*?)\r\n", "$1").Trim();
+            //}
+            string inputKey = hanshakeInfo.HandshakeContent["Sec-WebSocket-Key"];
             SHA1 sha1 = SHA1.Create();
 
             string aKey = inputKey + MagicKey;
@@ -436,8 +463,8 @@ namespace LibIOCP.DataProtocol
         Close= 0x8,
         Binary= 0x2,
         Text= 0x1,
-        Row = 0x0
-
+        Row = 0x0,
+        
     }
     /// <summary>
     /// 消息包头

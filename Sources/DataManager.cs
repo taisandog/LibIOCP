@@ -1,9 +1,11 @@
-﻿using LibIOCP.DataProtocol;
+﻿using Buffalo.Kernel.Collections;
+using LibIOCP.DataProtocol;
 using System;
 using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Net.Sockets;
 
 namespace LibIOCP
 {
