@@ -108,6 +108,10 @@ namespace LibIOCP
         /// <returns></returns>
         public bool ExistsClient(ClientSocketBase client)
         {
+            if (!_running)
+            {
+                return false;
+            }
             return _clients.Clients.ContainsKey(client);
         }
 
@@ -171,6 +175,10 @@ namespace LibIOCP
         {
             get 
             {
+                if (!_running)
+                {
+                    return 0;
+                }
                 return _clients.Clients.Count;
             }
         }
@@ -261,6 +269,10 @@ namespace LibIOCP
         /// <param name="socket"></param>
         public bool RemoveSocket(ClientSocketBase socket)
         {
+            if (!_running)
+            {
+                return true;
+            }
             return _clients.RemoveSocket(socket);
         }
         private void DoRun()
