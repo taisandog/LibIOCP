@@ -121,6 +121,7 @@ namespace LibIOCP.DataProtocol
         {
             NetByteBuffer buffer = socket.BufferData;
             DataManager dataManager = socket.DataManager;
+            WebSocketHandshake hanshakeInfo = null;
             recPacket = null;
             WebSocketClientSocket wsocket = socket as WebSocketClientSocket;
             if(wsocket == null || !wsocket.Connected)
@@ -133,9 +134,10 @@ namespace LibIOCP.DataProtocol
                 buffer.ReadBytes(0, allData, 0, allData.Length);
                 if (wsocket.IsServerSocket)
                 {
-                    if (wsocket.ServerHandshake(allData,0, allData.Length))
+                    hanshakeInfo = wsocket.ServerHandshake(allData, 0, allData.Length);
+                    if (hanshakeInfo.IsSuccess)
                     {
-                        int retInt = socket.PutMessageEvent(HandshakeType, null);
+                        int retInt = socket.PutMessageEvent(HandshakeType, hanshakeInfo);
                         if (retInt != 0)
                         {
                             ProtocolDraft10.ResponseWebSocketHandShake(wsocket.HanshakeInfo, wsocket);//握手
@@ -149,13 +151,14 @@ namespace LibIOCP.DataProtocol
                 }
                 else
                 {
-                    if (!wsocket.ClientHandshake(allData, 0, allData.Length))
+                    hanshakeInfo = wsocket.ClientHandshake(allData, 0, allData.Length);
+                    if (!hanshakeInfo.IsSuccess)
                     {
-                        socket.PutMessageEvent(HandshakeType, null);
+                        socket.PutMessageEvent(HandshakeType, hanshakeInfo);
                         wsocket.Close();
                         return false;
                     }
-                    socket.PutMessageEvent(HandshakeType, null);
+                    socket.PutMessageEvent(HandshakeType, hanshakeInfo);
                 }
                 buffer.RemoveHeadBytes(allData.Length);
                 //wsocket.HasWebSocketFirstTransfer = true;

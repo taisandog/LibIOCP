@@ -111,12 +111,12 @@ namespace LibIOCP.DataProtocol
         /// <param name="start"></param>
         /// <param name="count"></param>
         /// <returns></returns>
-        public bool ServerHandshake(byte[] content, int start, int count) 
+        public WebSocketHandshake ServerHandshake(byte[] content, int start, int count) 
         {
             WebSocketHandshake hanshakeInfo = new WebSocketHandshake(content, start, count);
             _hanshakeInfo = hanshakeInfo;
             hanshakeInfo.IsSuccess = hanshakeInfo.HandshakeContent.ContainsKey("Sec-WebSocket-Key");
-            return hanshakeInfo.IsSuccess;
+            return hanshakeInfo;
             
         }
         /// <summary>
@@ -126,12 +126,12 @@ namespace LibIOCP.DataProtocol
         /// <param name="start"></param>
         /// <param name="count"></param>
         /// <returns></returns>
-        public bool ClientHandshake(byte[] content, int start, int count)
+        public WebSocketHandshake ClientHandshake(byte[] content, int start, int count)
         {
             WebSocketHandshake hanshakeInfo = new WebSocketHandshake(content, start, count);
             _hanshakeInfo = hanshakeInfo;
             hanshakeInfo.IsSuccess = hanshakeInfo.HandshakeContent.ContainsKey("Sec-WebSocket-Accept");
-            return hanshakeInfo.IsSuccess;
+            return hanshakeInfo;
             
         }
         public override void SendHeard()

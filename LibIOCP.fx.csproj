@@ -95,6 +95,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug%28MLG%29|AnyCPU'">
     <OutputPath>bin\Debug%28MLG%29\</OutputPath>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug%28MLG%29|x64'">
     <OutputPath>bin\x64\Debug%28MLG%29\</OutputPath>
@@ -120,9 +121,6 @@
     <CodeAnalysisRuleSet>MinimumRecommendedRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Buffalo.Kernel">
-      <HintPath>Dll\Buffalo.Kernel.dll</HintPath>
-    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Web" />

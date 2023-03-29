@@ -57,41 +57,41 @@ namespace LibIOCP.DataProtocol
 
 
 
-        /// <summary>
-        /// 回应websocket握手
-        /// </summary>
-        /// <param name="inputData">握手内容</param>
-        /// <param name="socket">socket</param>
-        public static void ResponseWebSocketHandShake(byte[] inputByteData, Socket socket)
-        {
-            string inputData = System.Text.Encoding.UTF8.GetString(inputByteData);
-            string inputKey = null;
-            Match m = _reg.Match(inputData);
-            if (m.Value != "")
-            {
-                inputKey = Regex.Replace(m.Value, @"Sec\-WebSocket\-Key:(.*?)\r\n", "$1").Trim();
-            }
-            SHA1 sha1 = SHA1.Create();
+        ///// <summary>
+        ///// 回应websocket握手
+        ///// </summary>
+        ///// <param name="inputData">握手内容</param>
+        ///// <param name="socket">socket</param>
+        //public static void ResponseWebSocketHandShake(byte[] inputByteData, Socket socket)
+        //{
+        //    string inputData = System.Text.Encoding.UTF8.GetString(inputByteData);
+        //    string inputKey = null;
+        //    Match m = _reg.Match(inputData);
+        //    if (m.Value != "")
+        //    {
+        //        inputKey = Regex.Replace(m.Value, @"Sec\-WebSocket\-Key:(.*?)\r\n", "$1").Trim();
+        //    }
+        //    SHA1 sha1 = SHA1.Create();
 
-            string aKey = inputKey + WSGUID;
-            byte[] bytes = System.Text.Encoding.ASCII.GetBytes(aKey);
-            string accessKey = Convert.ToBase64String(sha1.ComputeHash(bytes));
+        //    string aKey = inputKey + WSGUID;
+        //    byte[] bytes = System.Text.Encoding.ASCII.GetBytes(aKey);
+        //    string accessKey = Convert.ToBase64String(sha1.ComputeHash(bytes));
 
-            StringBuilder sbSend = new StringBuilder();
-            sbSend.AppendLine("HTTP/1.1 101 Switching Protocols");
-            sbSend.AppendLine("Upgrade: websocket");
-            sbSend.AppendLine("Connection: Upgrade");
+        //    StringBuilder sbSend = new StringBuilder();
+        //    sbSend.AppendLine("HTTP/1.1 101 Switching Protocols");
+        //    sbSend.AppendLine("Upgrade: websocket");
+        //    sbSend.AppendLine("Connection: Upgrade");
 
-            sbSend.AppendLine("Sec-WebSocket-Accept: " + accessKey);
-            sbSend.AppendLine();
-            byte[] data = System.Text.Encoding.ASCII.GetBytes(sbSend.ToString());
+        //    sbSend.AppendLine("Sec-WebSocket-Accept: " + accessKey);
+        //    sbSend.AppendLine();
+        //    byte[] data = System.Text.Encoding.ASCII.GetBytes(sbSend.ToString());
 
-            //socket.Send(data);
-            SocketAsyncEventArgs sendSocketAsync = new SocketAsyncEventArgs();
-            sendSocketAsync.AcceptSocket = socket;
-            sendSocketAsync.SetBuffer(data, 0, data.Length);
-            socket.SendAsync(sendSocketAsync);
-        }
+        //    //socket.Send(data);
+        //    SocketAsyncEventArgs sendSocketAsync = new SocketAsyncEventArgs();
+        //    sendSocketAsync.AcceptSocket = socket;
+        //    sendSocketAsync.SetBuffer(data, 0, data.Length);
+        //    socket.SendAsync(sendSocketAsync);
+        //}
 
         #region 处理接收的数据
         /// <summary>
