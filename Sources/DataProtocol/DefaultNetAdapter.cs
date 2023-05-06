@@ -49,7 +49,7 @@ namespace LibIOCP.DataProtocol
         /// <summary>
         /// 数据包空包长度
         /// </summary>
-        public int PACKET_LENGHT 
+        public override int PACKET_LENGHT 
         {
             get 
             {
@@ -57,13 +57,13 @@ namespace LibIOCP.DataProtocol
             }
         }
 
-        
+
 
         /// <summary>
         /// 将数据包输出为数组
         /// </summary>
         /// <returns></returns>
-        public byte[] ToArray(DataPacketBase packetBase)
+        public override byte[] ToArray(DataPacketBase packetBase)
         {
             DataPacket packet = packetBase as DataPacket;
             byte[] result;
@@ -131,7 +131,7 @@ namespace LibIOCP.DataProtocol
         /// 判断数据是否合法,并进行一次数据解析
         /// </summary>
         /// <returns>是否进行下一次判断</returns>
-        public bool IsDataLegal(out DataPacketBase recPacket, ClientSocketBase socket)
+        public override bool IsDataLegal(out DataPacketBase recPacket, ClientSocketBase socket)
         {
             recPacket = null;
             NetByteBuffer bufferData = socket.BufferData;
@@ -311,87 +311,26 @@ namespace LibIOCP.DataProtocol
         /// 创建数据包
         /// </summary>
         /// <returns></returns>
-        public DataPacketBase CreateDataPacket(object packetId, bool lost, byte[] data, bool verify) 
+        public override DataPacketBase CreateDataPacket(object packetId, bool lost, byte[] data, bool verify) 
         {
             DataPacket packet = new DataPacket((int)packetId, lost, data, verify, this);
             return packet;
         }
-       
+
         /// <summary>
         /// 创建socket连接
         /// </summary>
         /// <returns></returns>
-        public ClientSocketBase CreateClientSocket(Socket socket, int maxSendPool=15, int maxLostPool=15,
+        public override ClientSocketBase CreateClientSocket(Socket socket, int maxSendPool=15, int maxLostPool=15,
             HeartManager heartManager = null, bool isServerSocket = false, SocketCertConfig certConfig = null) 
         {
             ClientSocket ret = new ClientSocket(socket, maxSendPool, maxLostPool, heartManager, isServerSocket, this,certConfig);
             return ret;
         }
 
-        public void Log(string message)
-        {
-            if (_message != null) 
-            {
-                _message.Log(message);
-            }
-        }
-
-        public void LogError(string message)
-        {
-            if (_message != null)
-            {
-                _message.LogError(message);
-            }
-        }
-
-        public void LogWarning(string message)
-        {
-            if (_message != null)
-            {
-                _message.LogWarning(message);
-            }
-        }
-
         
 
-        public bool ShowLog
-        {
-            get
-            {
-                if (_message == null) 
-                {
-                    return false;
-                }
-                return _message.ShowLog;
-            }
-            
-        }
-        public bool ShowError
-        {
-            get
-            {
-                if (_message == null)
-                {
-                    return false;
-                }
-                return _message.ShowError;
-            }
-            
-        }
-        public bool ShowWarning
-        {
-            get
-            {
-                if (_message == null)
-                {
-                    return false;
-                }
-                return _message.ShowWarning;
-            }
-            
-        }
-
-        public object EmptyPacketId 
+        public override object EmptyPacketId 
         {
             get 
             {
@@ -400,17 +339,8 @@ namespace LibIOCP.DataProtocol
         }
 
         
-        private IConnectMessage _message;
-
-        public IConnectMessage Messager
-        {
-            get
-            {
-                return _message;
-            }
-            set { _message = value; }
-        }
-        public int BufferLength
+       
+        public override int BufferLength
         {
             get { return 1024; }
         }

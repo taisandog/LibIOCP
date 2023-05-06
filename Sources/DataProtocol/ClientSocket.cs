@@ -79,6 +79,7 @@ namespace LibIOCP.DataProtocol
             packet = new DataPacket(_sendPakcetID, lost, data, verify, _netProtocol);
 
             packet.MergeTag = mergeTag;
+            _netProtocol.PutSendPacketEvent(packet);
             SendPacket(packet);
             return packet;
 

@@ -42,7 +42,7 @@ namespace LibIOCP.DataProtocol
 
        
 
-        private static INetProtocol _defaultAdapter = new WebSocketAdapter();
+        private static WebSocketAdapter _defaultAdapter = new WebSocketAdapter();
 
         protected override INetProtocol CreateDefaultAdapter()
         {
@@ -72,9 +72,10 @@ namespace LibIOCP.DataProtocol
 
         public override DataPacketBase Send(byte[] data)
         {
-           
-            WebSocketDataPacket dp = _netProtocol.CreateDataPacket(0, false, data,false) as WebSocketDataPacket;
-            dp.WebSocketMessageType = OperType.Binary;
+            WebSocketAdapter adp = _netProtocol as WebSocketAdapter;
+             WebSocketDataPacket dp = _netProtocol.CreateDataPacket(0, false, data,false) as WebSocketDataPacket;
+            _netProtocol.PutSendPacketEvent(dp);
+            
             SendPacket(dp);
             return dp;
         }
@@ -206,6 +207,7 @@ namespace LibIOCP.DataProtocol
             byte[] data = Encoding.UTF8.GetBytes(text);
             WebSocketDataPacket dp = _netProtocol.CreateDataPacket(0, false, data,false) as WebSocketDataPacket;
             dp.WebSocketMessageType=OperType.Text;
+            _netProtocol.PutSendPacketEvent(dp);
             SendPacket(dp);
             return dp;
         }

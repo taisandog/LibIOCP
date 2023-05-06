@@ -300,7 +300,10 @@ namespace LibIOCP
                     }
                     catch (Exception ex)
                     {
-                        _message.LogError(ex.ToString());
+                        if (Util.HasShowError(_message))
+                        {
+                            _message.LogError(ex.ToString());
+                        }
                     }
                     finally 
                     {
@@ -448,7 +451,7 @@ namespace LibIOCP
             }
             if (Util.HasShowWarning(_message) && count > 0)
             {
-                if (_message.ShowWarning)
+                if (Util.HasShowWarning(_message))
                 {
                     _message.LogWarning("Clear destroyed connection:" + count);
                 }
@@ -481,7 +484,7 @@ namespace LibIOCP
                         }
                         catch { }
                     }
-                    if (_message.ShowWarning)
+                    if (Util.HasShowWarning(_message))
                     {
                         StringBuilder sb = new StringBuilder(50);
                         sb.Append("Connection timedout:ID:");

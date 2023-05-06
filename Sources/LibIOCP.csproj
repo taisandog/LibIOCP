@@ -13,10 +13,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="DataProtocol\ClientSocketBase.WebSocket.cs" />
-  </ItemGroup>
-
-  <ItemGroup>
     <PackageReference Include="Buffalo.Kernel" Version="1.5.3" />
   </ItemGroup>
 

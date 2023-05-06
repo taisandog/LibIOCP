@@ -128,6 +128,7 @@ namespace LibIOCP.DataProtocol
             packet = new FastDataPacket(packetId, data, false, _netProtocol);
             //packet.IsVerify = verify;
             packet.MergeTag = mergeTag;
+            _netProtocol.PutSendPacketEvent(packet);
             SendPacket(packet);
             return packet;
 

@@ -464,7 +464,7 @@ namespace LibIOCP.DataProtocol
         Binary= 0x2,
         Text= 0x1,
         Row = 0x0,
-        
+        None=-1
     }
     /// <summary>
     /// 消息包头

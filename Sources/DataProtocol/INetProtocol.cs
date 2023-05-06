@@ -6,15 +6,101 @@ using System.Text;
 
 namespace LibIOCP.DataProtocol
 {
+    public delegate void OnSendPacketHandle(DataPacketBase packet);
     /// <summary>
     /// 网络协议
     /// </summary>
-    public interface INetProtocol: IConnectMessage
+    public abstract class INetProtocol : IConnectMessage
     {
+        private IConnectMessage _message;
+
+        public IConnectMessage Messager
+        {
+            get
+            {
+                return _message;
+            }
+            set { _message = value; }
+        }
+        public void Log(string message)
+        {
+            if (_message != null)
+            {
+                _message.Log(message);
+            }
+        }
+
+        public void LogError(string message)
+        {
+            if (_message != null)
+            {
+                _message.LogError(message);
+            }
+        }
+
+        public void LogWarning(string message)
+        {
+            if (_message != null)
+            {
+                _message.LogWarning(message);
+            }
+        }
+
+
+
+        public bool ShowLog
+        {
+            get
+            {
+                if (_message == null)
+                {
+                    return false;
+                }
+                return _message.ShowLog;
+            }
+
+        }
+        public bool ShowError
+        {
+            get
+            {
+                if (_message == null)
+                {
+                    return false;
+                }
+                return _message.ShowError;
+            }
+
+        }
+        public bool ShowWarning
+        {
+            get
+            {
+                if (_message == null)
+                {
+                    return false;
+                }
+                return _message.ShowWarning;
+            }
+
+        }
+        public event OnSendPacketHandle OnSendPacket;
+        /// <summary>
+        /// 进行发包前的事件
+        /// </summary>
+        /// <param name="packet"></param>
+        internal void PutSendPacketEvent(DataPacketBase packet) 
+        {
+            if(OnSendPacket != null) 
+            {
+                OnSendPacket(packet);
+            }
+        }
+
         /// <summary>
         /// 数据包空包长度
         /// </summary>
-        int PACKET_LENGHT
+        public abstract int PACKET_LENGHT
         {
             get;
         }
@@ -23,19 +109,19 @@ namespace LibIOCP.DataProtocol
         /// 将数据包输出为数组
         /// </summary>
         /// <returns></returns>
-        byte[] ToArray(DataPacketBase packet);
+        public abstract byte[] ToArray(DataPacketBase packet);
 
-       
+
         /// <summary>
         /// 判断数据是否合法,并进行一次数据解析
         /// </summary>
         /// <returns>是否进行下一次判断</returns>
-        bool IsDataLegal(out DataPacketBase recPacket, ClientSocketBase socket);
+        public abstract bool IsDataLegal(out DataPacketBase recPacket, ClientSocketBase socket);
         /// <summary>
         /// 创建数据包
         /// </summary>
         /// <returns></returns>
-        DataPacketBase CreateDataPacket(object packetId, bool lost, byte[] data,bool verify);
+        public abstract DataPacketBase CreateDataPacket(object packetId, bool lost, byte[] data, bool verify);
 
         /// <summary>
         /// 创建socket连接
@@ -46,18 +132,22 @@ namespace LibIOCP.DataProtocol
         /// <param name="heartManager">心跳管理</param>
         /// <param name="isServerSocket">是否监听创建连接</param>
         /// <returns></returns>
-        ClientSocketBase CreateClientSocket(Socket socket, int maxSendPool = 15, int maxLostPool = 15,
-            HeartManager heartManager = null,bool isServerSocket=false, SocketCertConfig certConfig = null);
+        public abstract ClientSocketBase CreateClientSocket(Socket socket, int maxSendPool = 15, int maxLostPool = 15,
+            HeartManager heartManager = null, bool isServerSocket = false, SocketCertConfig certConfig = null);
+
+        
 
         /// <summary>
         /// 空ID
         /// </summary>
         /// <param name="packetId"></param>
         /// <returns></returns>
-        object EmptyPacketId { get; }
+        public abstract object EmptyPacketId { get; }
         /// <summary>
         /// 缓冲长度
         /// </summary>
-        int BufferLength { get; }
+        public abstract int BufferLength { get; }
+
+       
     }
 }
