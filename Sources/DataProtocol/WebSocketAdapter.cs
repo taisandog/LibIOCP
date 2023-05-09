@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Sockets;
+using System.Security.Authentication;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -15,6 +16,11 @@ namespace LibIOCP.DataProtocol
     /// </summary>
     public class WebSocketAdapter : INetProtocol
     {
+        /// <summary>
+        /// 默认支持协议
+        /// </summary>
+        public const SslProtocols DefaultProtocols = SslProtocols.Tls12 | SslProtocols.Tls11 | SslProtocols.Tls;
+
         public override int BufferLength
         {
             get { return 2048; }

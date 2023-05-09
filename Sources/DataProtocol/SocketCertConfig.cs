@@ -161,14 +161,19 @@ namespace LibIOCP.DataProtocol
         /// <returns></returns>
         private static bool DefaultServerRemoteCertificateValidation(object sender, X509Certificate certificate, X509Chain chain, SslPolicyErrors sslPolicyErrors)
         {
-            return true;
+            if (sslPolicyErrors == SslPolicyErrors.None)
+            {
+                return true;
+            }
+
+            return false;
         }
 
         /// <summary>
         /// 创建Socket证书配置(客户端)
         /// </summary>
-        /// <param name="serverCert">服务端证书</param>
-        /// <param name="clientCertificateRequired">客户端需要证书</param>
+        /// <param name="targetHost">地址</param>
+        /// <param name="clientCertificates">客户端需要证书</param>
         /// <param name="enabledSslProtocols">SSL类型</param>
         /// <param name="checkCertificateRevocation">检查证书吊销</param>
         /// <param name="leaveInnerStreamOpen">保持流打开</param>
@@ -180,7 +185,7 @@ namespace LibIOCP.DataProtocol
              bool leaveInnerStreamOpen = false,
             RemoteCertificateValidationCallback userCertificateValidationCallback = null,
             LocalCertificateSelectionCallback userCertificateSelectionCallback = null,
-            EncryptionPolicy encryptionPolicy = EncryptionPolicy.NoEncryption)
+            EncryptionPolicy encryptionPolicy = EncryptionPolicy.AllowNoEncryption)
         {
             SocketCertConfig config = new SocketCertConfig();
             config._targetHost = targetHost;
@@ -188,7 +193,7 @@ namespace LibIOCP.DataProtocol
             {
                 config._clientCertificates = clientCertificates;
             }
-            else 
+            else
             {
                 config._clientCertificates = new X509CertificateCollection();
             }

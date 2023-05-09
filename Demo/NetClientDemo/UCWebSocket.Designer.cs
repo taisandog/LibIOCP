@@ -33,10 +33,10 @@
             label3 = new Label();
             btnSend = new Button();
             btnStart = new Button();
-            nupFastPort = new NumericUpDown();
-            label2 = new Label();
             txtFastIP = new TextBox();
             label1 = new Label();
+            label2 = new Label();
+            nupFastPort = new NumericUpDown();
             ((System.ComponentModel.ISupportInitialize)nupFastPort).BeginInit();
             SuspendLayout();
             // 
@@ -87,31 +87,13 @@
             btnStart.UseVisualStyleBackColor = true;
             btnStart.Click += btnStart_Click;
             // 
-            // nupFastPort
-            // 
-            nupFastPort.Location = new Point(189, 11);
-            nupFastPort.Maximum = new decimal(new int[] { 65535, 0, 0, 0 });
-            nupFastPort.Minimum = new decimal(new int[] { 1, 0, 0, 0 });
-            nupFastPort.Name = "nupFastPort";
-            nupFastPort.Size = new Size(86, 23);
-            nupFastPort.TabIndex = 21;
-            nupFastPort.Value = new decimal(new int[] { 8588, 0, 0, 0 });
-            // 
-            // label2
-            // 
-            label2.AutoSize = true;
-            label2.Location = new Point(172, 14);
-            label2.Name = "label2";
-            label2.Size = new Size(11, 17);
-            label2.TabIndex = 20;
-            label2.Text = ":";
-            // 
             // txtFastIP
             // 
             txtFastIP.Location = new Point(57, 11);
             txtFastIP.Name = "txtFastIP";
-            txtFastIP.Size = new Size(109, 23);
+            txtFastIP.Size = new Size(201, 23);
             txtFastIP.TabIndex = 19;
+            txtFastIP.Text = "wss://localhost:8589";
             // 
             // label1
             // 
@@ -121,6 +103,27 @@
             label1.Size = new Size(35, 17);
             label1.TabIndex = 18;
             label1.Text = "地址:";
+            // 
+            // label2
+            // 
+            label2.AutoSize = true;
+            label2.Location = new Point(259, 14);
+            label2.Name = "label2";
+            label2.Size = new Size(11, 17);
+            label2.TabIndex = 20;
+            label2.Text = ":";
+            label2.Visible = false;
+            // 
+            // nupFastPort
+            // 
+            nupFastPort.Location = new Point(276, 11);
+            nupFastPort.Maximum = new decimal(new int[] { 65535, 0, 0, 0 });
+            nupFastPort.Minimum = new decimal(new int[] { 1, 0, 0, 0 });
+            nupFastPort.Name = "nupFastPort";
+            nupFastPort.Size = new Size(86, 23);
+            nupFastPort.TabIndex = 21;
+            nupFastPort.Value = new decimal(new int[] { 8588, 0, 0, 0 });
+            nupFastPort.Visible = false;
             // 
             // UCWebSocket
             // 

@@ -15,4 +15,10 @@
     <ProjectReference Include="..\..\Sources\LibIOCP.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="App_Data\111.pfx">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>

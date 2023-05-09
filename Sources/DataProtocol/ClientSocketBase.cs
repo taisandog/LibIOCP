@@ -663,6 +663,10 @@ namespace LibIOCP.DataProtocol
             SocketAsyncEventArgs eventArgs = ar.AsyncState as SocketAsyncEventArgs;
             try
             {
+                if (_tlsStream == null) 
+                {
+                    return;
+                }
                 int readCount = _tlsStream.EndRead(ar);
                 //if (readCount <= 0)
                 //{

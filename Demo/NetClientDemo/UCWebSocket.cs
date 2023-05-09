@@ -7,9 +7,11 @@ using System.ComponentModel;
 using System.Data;
 using System.Drawing;
 using System.Linq;
+using System.Net.Security;
 using System.Net.Sockets;
 using System.Runtime.ConstrainedExecution;
 using System.Security.Authentication;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -120,52 +122,87 @@ namespace NetClientDemo
             lock (this)
             {
 
-                Socket socket = null;
-                try
-                {
-                    socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-                    socket.Connect(txtFastIP.Text, (int)nupFastPort.Value);
-                    
-                }
-                catch (Exception ex)
-                {
-                    if (_messbox != null && _messbox.ShowError)
-                    {
-                        _messbox.LogError(ex.ToString());
-                    }
-                    return;
-                }
-
-                if (_heart == null)
-                {
-                    _heart = new HeartManager(20000, 5000, 1000, _messbox);
-                }
-                if (_defaultNetAdapter == null)
-                {
-                    _defaultNetAdapter = new WebSocketAdapter();
-                }
-                SocketCertConfig cert = null;
-                //WSS时候使用这个
-                //string host = "www.xx.com";
-                //SslProtocols protocols = SslProtocols.Tls12 | SslProtocols.Tls11 | SslProtocols.Tls13;
-                //cert = SocketCertConfig.CreateClientConfig(host, null, protocols);
-
-                _conn = new WebSocketClientSocket(socket, _heart, false, _defaultNetAdapter, cert);
-                _conn.OnClose += _conn_OnClose; 
+                CreateSocket2();
+                _conn.OnClose += _conn_OnClose;
                 _conn.AddReceiveDataHandle(_conn_OnReceiveData);
                 _conn.OnError += _conn_OnError;
                 _conn.Messager = _messbox;
 
-                string param = "uid=1";//握手参数，等于?uid=1
-                _conn.SendHandShake(txtFastIP.Text,null);//发送握手，如果有参数则
+                _conn.SendHandShake(txtFastIP.Text, null);//发送握手，如果有参数则发param
 
                 if (_messbox != null && _messbox.ShowLog)
                 {
-                    String str = String.Format("{0},已经连上服务器:{1}:{2}", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff"), txtFastIP.Text, (int)nupFastPort.Value);
+                    String str = String.Format("{0},已经连上服务器:{1}", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff"), txtFastIP.Text);
                     _messbox.Log(str);
                 }
             }
         }
+
+        /// <summary>
+        /// 创建socket
+        /// </summary>
+        private void CreateSocket2()
+        {
+
+
+            if (_heart == null)
+            {
+                _heart = new HeartManager(20000, 5000, 1000, _messbox);
+            }
+            if (_defaultNetAdapter == null)
+            {
+                _defaultNetAdapter = new WebSocketAdapter();
+            }
+
+
+            _conn = WebSocketClientSocket.CreateConnect(txtFastIP.Text, _heart, netProtocol: _defaultNetAdapter,
+                userCertificateValidationCallback: ClientRemoteCertificateValidation);
+        }
+        private static bool ClientRemoteCertificateValidation(object sender, X509Certificate certificate, X509Chain chain, SslPolicyErrors sslPolicyErrors)
+        {
+
+            return true;//强行跳过验证合法性,测试时候没有域名和证书，需要此方法
+
+
+        }
+        /// <summary>
+        /// 创建socket
+        /// </summary>
+        private void CreateSocket()
+        {
+            Socket socket = null;
+            try
+            {
+                socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+                socket.Connect(txtFastIP.Text, (int)nupFastPort.Value);
+
+            }
+            catch (Exception ex)
+            {
+                if (_messbox != null && _messbox.ShowError)
+                {
+                    _messbox.LogError(ex.ToString());
+                }
+                return;
+            }
+
+            if (_heart == null)
+            {
+                _heart = new HeartManager(20000, 5000, 1000, _messbox);
+            }
+            if (_defaultNetAdapter == null)
+            {
+                _defaultNetAdapter = new WebSocketAdapter();
+            }
+            SocketCertConfig cert = null;
+            //WSS时候使用这个
+            //string host = "www.xx.com";
+            //SslProtocols protocols = SslProtocols.Tls12 | SslProtocols.Tls11 | SslProtocols.Tls13;
+            //cert = SocketCertConfig.CreateClientConfig(host, null, protocols);
+
+            _conn = new WebSocketClientSocket(socket, _heart, false, _defaultNetAdapter, cert);
+        }
+
         private void _conn_OnClose(LibIOCP.DataProtocol.ClientSocketBase clientSocket)
         {
             if (!_isRunning)

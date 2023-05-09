@@ -2,10 +2,13 @@
 using LibIOCP.DataProtocol;
 using Microsoft.AspNetCore.Hosting.Server;
 using Newtonsoft.Json;
+using System;
 using System.Net;
 using System.Net.Http.Json;
 using System.Net.Security;
+using System.Runtime.InteropServices;
 using System.Security.Authentication;
+using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 
 namespace FastNetServerDemo
@@ -14,6 +17,7 @@ namespace FastNetServerDemo
     {
         private static ServerSocket _serverFast = null;
         private static ServerSocket _serverWebSocket = null;
+        private static ServerSocket _serverWebSocketTLS = null;
         private static HeartManager _heart = null;
         private static ServerMessageLog _log = new ServerMessageLog();
 
@@ -28,12 +32,14 @@ namespace FastNetServerDemo
         private static WebSocketAdapter _wsNetAdapter = null;
         static void Main(string[] args)
         {
-
+            _log.ShowWarning = true;
+            _log.ShowError=true;
+            _log.ShowLog = true;
             _heart = new HeartManager(20000, 5000, 1000, _log);
             _heart.StartHeart();
             _serverFast = ConnectFast(8587);
             _serverWebSocket = ConnectWebSocket(8588);
-
+            _serverWebSocketTLS = ConnectWebSocketTLS(8589);
             Console.WriteLine("服务开启");
             string line = null;
             while (true)
@@ -77,27 +83,6 @@ namespace FastNetServerDemo
             
             ServerSocket server = new ServerSocket("0.0.0.0", port, _heart, _wsNetAdapter, _log);
 
-            ////此段是ssl模式的wss使用的证书方式验证
-            //string fileName = "app_data\\cert.cer";
-            //string password = "";
-            //if (!string.IsNullOrWhiteSpace(fileName))
-            //{
-            //    X509Certificate2 cert = null;
-            //    if (!string.IsNullOrWhiteSpace(password))
-            //    {
-            //        cert = new X509Certificate2(fileName, password, X509KeyStorageFlags.Exportable);
-            //    }
-            //    else
-            //    {
-            //        cert = new X509Certificate2(fileName);
-            //    }
-            //    SslProtocols sslProtocols = SslProtocols.Tls12 | SslProtocols.Tls11 | SslProtocols.Tls;
-            //    //X509Certificate2 cert = new X509Certificate2(fileName);
-
-            //    server.CertConfig = SocketCertConfig.CreateServerConfig(cert, false, sslProtocols, false, true, DoRemoteCertificateValidation, null, EncryptionPolicy.AllowNoEncryption);
-
-            //}
-
 
             server.OnAccept += Server_OnAccept;
             server.OnClose += Server_OnClose;
@@ -108,7 +93,49 @@ namespace FastNetServerDemo
             Console.WriteLine("Websocket:ws://0.0.0.0:" + port);
             return server;
         }
+        /// <summary>
+        /// 简易协议
+        /// </summary>
+        /// <returns></returns>
+        private static ServerSocket ConnectWebSocketTLS(int port)
+        {
+            _wsNetAdapter = new WebSocketAdapter();
+            _wsNetAdapter.OnSendPacket += _wsNetAdapter_OnSendPacket;
 
+            ServerSocket server = new ServerSocket("0.0.0.0", port, _heart, _wsNetAdapter, _log);
+
+            string fileName = "App_Data/111.pfx";
+            string password = "111111";
+            //string password = "";
+            SslProtocols sslProtocols = WebSocketAdapter.DefaultProtocols;
+            X509Certificate2 cert = null;
+            if (!string.IsNullOrWhiteSpace(fileName))
+            {
+                
+                if (!string.IsNullOrWhiteSpace(password))
+                {
+                    cert = new X509Certificate2(fileName, password, X509KeyStorageFlags.Exportable);
+                }
+                else
+                {
+                    cert = new X509Certificate2(fileName);
+                }
+               
+            }
+            server.CertConfig = SocketCertConfig.CreateServerConfig(cert, false, sslProtocols, false, true,
+                DoRemoteCertificateValidation, null, EncryptionPolicy.AllowNoEncryption);
+
+            server.OnAccept += Server_OnAccept;
+            server.OnClose += Server_OnClose;
+            server.OnReceiveData += server_OnReceiveData;
+            server.OnMessage += Server_OnMessage;
+            server.OnError += Server_OnError;
+            server.Start();
+            Console.WriteLine("Websocket:wss://0.0.0.0:" + port);
+            return server;
+        }
+
+       
         private static void _wsNetAdapter_OnSendPacket(DataPacketBase packet)
         {
             WebSocketDataPacket dp = packet as WebSocketDataPacket;
@@ -181,7 +208,7 @@ namespace FastNetServerDemo
         public static bool DoRemoteCertificateValidation(object sender, X509Certificate certificate, X509Chain chain, SslPolicyErrors sslPolicyErrors)
         {
 
-            return true;//跳过验证合法性
+            return true;//强行跳过验证合法性,测试时候没有域名和证书，需要此方法
 
         }
     }

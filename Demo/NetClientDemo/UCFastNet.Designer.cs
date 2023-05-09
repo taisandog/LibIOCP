@@ -94,6 +94,7 @@
             txtFastIP.Name = "txtFastIP";
             txtFastIP.Size = new Size(109, 23);
             txtFastIP.TabIndex = 9;
+            txtFastIP.Text = "localhost";
             // 
             // label1
             // 

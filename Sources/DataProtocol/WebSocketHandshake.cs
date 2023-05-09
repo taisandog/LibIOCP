@@ -156,6 +156,8 @@ namespace LibIOCP.DataProtocol
             {
                 return url;
             }
+
+
             string strParam= line.Substring(index+1);
             string[] sparams = strParam.Split('&');
             string key = "";

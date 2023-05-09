@@ -3,8 +3,11 @@ using LibIOCP.DataProtocol;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Security;
 using System.Net.Sockets;
+using System.Security.Authentication;
 using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -69,6 +72,71 @@ namespace LibIOCP.DataProtocol
         {
 
         }
+
+        private string _urihandshake=null;
+
+        /// <summary>
+        /// 创建websocket连接
+        /// </summary>
+        /// <param name="url">地址</param>
+        /// <param name="heartManager">心跳管理</param>
+        /// <param name="cert">证书</param>
+        /// <param name="isServerSocket">是否服务器socket</param>
+        /// <param name="maxSendPool">最大发池</param>
+        /// <param name="maxLostPool">最大丢包管理池</param>
+        /// <param name="netProtocol">协议</param>
+        /// <param name="clientCertificates">客户端需要证书</param>
+        /// <param name="enabledSslProtocols">SSL类型</param>
+        /// <param name="checkCertificateRevocation">检查证书吊销</param>
+        /// <param name="leaveInnerStreamOpen">保持流打开</param>
+        /// <param name="userCertificateValidationCallback">用户证书验证回调</param>
+        /// <param name="userCertificateSelectionCallback">用户证书选择回调</param>
+        /// <param name="encryptionPolicy">加密策略</param>
+        /// <returns></returns>
+        public static WebSocketClientSocket CreateConnect(string url,  HeartManager heartManager,
+           SocketCertConfig cert=null,bool isServerSocket=false, int maxSendPool=15, int maxLostPool=15,
+            INetProtocol netProtocol = null,X509CertificateCollection clientCertificates=null,
+            SslProtocols enabledSslProtocols= WebSocketAdapter.DefaultProtocols, bool checkCertificateRevocation = false,
+             bool leaveInnerStreamOpen = false,
+            RemoteCertificateValidationCallback userCertificateValidationCallback = null,
+            LocalCertificateSelectionCallback userCertificateSelectionCallback = null,
+            EncryptionPolicy encryptionPolicy = EncryptionPolicy.AllowNoEncryption) 
+        {
+            Uri uri = new Uri(url);
+            if (string.Equals(uri.Scheme, "wss", StringComparison.CurrentCultureIgnoreCase)) 
+            {
+                if (cert == null)
+                {
+                    cert = SocketCertConfig.CreateClientConfig(uri.Host, clientCertificates, enabledSslProtocols,
+                        checkCertificateRevocation, leaveInnerStreamOpen, userCertificateValidationCallback, userCertificateSelectionCallback);
+                }
+            }
+            else 
+            {
+                cert = null;
+            }
+            Socket socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+            socket.Connect(uri.Host, uri.Port);
+           
+            WebSocketClientSocket _coon= new WebSocketClientSocket(socket, maxSendPool, maxLostPool, heartManager, isServerSocket, netProtocol, cert);
+            _coon._urihandshake = uri.PathAndQuery;
+            return _coon;
+        }
+        
+        /// <summary>
+        /// 创建证书
+        /// </summary>
+        /// <param name="url">地址</param>
+        /// <param name="clientCertificates">证书</param>
+        /// <param name="protocols">协议</param>
+        /// <returns></returns>
+        public static SocketCertConfig CreateCert(string url, 
+            X509CertificateCollection clientCertificates=null, SslProtocols protocols= WebSocketAdapter.DefaultProtocols) 
+        {
+            Uri uri = new Uri(url);
+            return SocketCertConfig.CreateClientConfig(uri.Host, null, protocols);
+        }
+
 
         public override DataPacketBase Send(byte[] data)
         {
@@ -177,6 +245,10 @@ namespace LibIOCP.DataProtocol
                 webSocketKey = Convert.ToBase64String(sha1.ComputeHash(Guid.NewGuid().ToByteArray()));
             }
             if (string.IsNullOrWhiteSpace(getParam)) 
+            {
+                getParam = _urihandshake;
+            }
+            if (string.IsNullOrWhiteSpace(getParam))
             {
                 getParam = "/";
             }
