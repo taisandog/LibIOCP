@@ -150,7 +150,7 @@ namespace LibIOCP.DataProtocol
                 {
                     return;
                 }
-                RunReceiveData(dataPacket);
+                base.DoDataPacket(dataPacket, recDate);
 
 
             }

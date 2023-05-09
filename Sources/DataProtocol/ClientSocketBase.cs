@@ -852,10 +852,6 @@ namespace LibIOCP.DataProtocol
         }
 
 
-      
-
-
-
         public virtual void DoDataPacket(DataPacketBase dataPacket, DateTime recDate)
         {
             if ( OnReceiveData != null)
@@ -864,34 +860,24 @@ namespace LibIOCP.DataProtocol
             }
         }
 
-        /// <summary>
-        /// 接收信息
-        /// </summary>
-        /// <param name="dataPacket"></param>
-        protected void RunReceiveData(DataPacketBase dataPacket) 
-        {
-            Thread th=new Thread(new ParameterizedThreadStart(DoReceiveData));
-            th.Start(dataPacket);
-        }
 
         /// <summary>
         /// 处理接收数据
         /// </summary>
         /// <param name="args"></param>
-        private void DoReceiveData(object args) 
+        private void DoReceiveData(DataPacketBase dataPacket)
         {
-            using (DataPacketBase dataPacket = args as DataPacketBase)
-            {
-                if (dataPacket == null)
-                {
-                    return;
-                }
 
-                lock (dataPacket)
-                {
-                    OnReceiveData(this, dataPacket);
-                }
+            if (dataPacket == null)
+            {
+                return;
             }
+
+            lock (dataPacket)
+            {
+                OnReceiveData(this, dataPacket);
+            }
+
         }
 
 
