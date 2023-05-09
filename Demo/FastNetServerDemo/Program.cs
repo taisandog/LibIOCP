@@ -104,24 +104,10 @@ namespace FastNetServerDemo
 
             ServerSocket server = new ServerSocket("0.0.0.0", port, _heart, _wsNetAdapter, _log);
 
-            string fileName = "App_Data/111.pfx";
-            string password = "111111";
-            //string password = "";
-            SslProtocols sslProtocols = WebSocketAdapter.DefaultProtocols;
-            X509Certificate2 cert = null;
-            if (!string.IsNullOrWhiteSpace(fileName))
-            {
-                
-                if (!string.IsNullOrWhiteSpace(password))
-                {
-                    cert = new X509Certificate2(fileName, password, X509KeyStorageFlags.Exportable);
-                }
-                else
-                {
-                    cert = new X509Certificate2(fileName);
-                }
-               
-            }
+            X509Certificate2 cert = LoadCert();
+             //string password = "";
+             SslProtocols sslProtocols = WebSocketAdapter.DefaultProtocols;
+           
             server.CertConfig = SocketCertConfig.CreateServerConfig(cert, false, sslProtocols, false, true,
                 DoRemoteCertificateValidation, null, EncryptionPolicy.AllowNoEncryption);
 
@@ -135,7 +121,28 @@ namespace FastNetServerDemo
             return server;
         }
 
+        private static X509Certificate2 LoadCert() 
+        {
+            string fileName = "App_Data/111.pfx";
+            string password = "111111";
+            X509Certificate2 cert = null;
+            if (!string.IsNullOrWhiteSpace(fileName))
+            {
+
+                if (!string.IsNullOrWhiteSpace(password))
+                {
+                    cert = new X509Certificate2(fileName, password, X509KeyStorageFlags.Exportable);
+                }
+                else
+                {
+                    cert = new X509Certificate2(fileName);
+                }
+
+            }
+            return cert;
+        }
        
+
         private static void _wsNetAdapter_OnSendPacket(DataPacketBase packet)
         {
             WebSocketDataPacket dp = packet as WebSocketDataPacket;

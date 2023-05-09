@@ -68,22 +68,43 @@ namespace LibIOCP.DataProtocol
         /// </summary>
         private void RebuildTlsStream()
         {
-            if (_tlsStream != null)
-            {
-                _tlsStream.Close();
-            }
-            _tlsStream = null;
+            
             if (_certConfig == null)
             {
                 return;
             }
-            if (_netStream == null)
-            {
-                _netStream = new NetworkStream(_bindSocket);
-            }
+            CloseTlsStream();
+
+            _netStream = new NetworkStream(_bindSocket);
+            
             _tlsStream = _certConfig.CreateStream(_netStream, _isServerSocket);
 
 
+        }
+
+        private void CloseTlsStream() 
+        {
+            SslStream sslStream = _tlsStream;
+            if (sslStream != null)
+            {
+                try
+                {
+                    sslStream.Close();
+                    sslStream.Dispose();
+                }
+                catch { }
+            }
+            sslStream = null;
+            _tlsStream = null;
+
+            NetworkStream netStream = _netStream;
+            if (netStream != null)
+            {
+                netStream.Close();
+                netStream.Dispose();
+            }
+            _netStream = null;
+            netStream = null;
         }
 
         public void AddReceiveDataHandle(DataEvent receiveData)
@@ -547,7 +568,7 @@ namespace LibIOCP.DataProtocol
 
         private bool SendAsync(Socket socket, SocketAsyncEventArgs sendSocketAsync)
         {
-            if (_certConfig == null)
+            if (_tlsStream == null)
             {
                 return socket.SendAsync(sendSocketAsync);
             }
@@ -642,7 +663,7 @@ namespace LibIOCP.DataProtocol
 
         private bool ReceiveAsync(Socket socket,SocketAsyncEventArgs eventArgs) 
         {
-            if(_certConfig == null) 
+            if(_tlsStream == null) 
             {
                 return socket.ReceiveAsync(eventArgs);
             }
@@ -1008,27 +1029,7 @@ namespace LibIOCP.DataProtocol
                 bufferData = null;
                 _bufferData = null;
 
-                SslStream sslStream = _tlsStream;
-                if (sslStream != null)
-                {
-                    try
-                    {
-                        sslStream.Close();
-                        sslStream.Dispose();
-                    }
-                    catch { }
-                }
-                sslStream = null;
-                _tlsStream = null;
-
-                NetworkStream netStream = _netStream;
-                if (netStream != null)
-                {
-                    netStream.Close();
-                    netStream.Dispose();
-                }
-                _netStream = null;
-                netStream = null;
+                CloseTlsStream();
             }
             _message = null;
             
