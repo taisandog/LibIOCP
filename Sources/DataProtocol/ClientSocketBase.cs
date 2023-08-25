@@ -1045,7 +1045,7 @@ namespace LibIOCP.DataProtocol
             }
             if(!isHandleMessage) 
             {
-                HandleClose("自动关闭");
+                HandleClose("Auto Close");
             }
         }
 
