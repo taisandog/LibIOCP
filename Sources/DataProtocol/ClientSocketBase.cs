@@ -393,7 +393,7 @@ namespace LibIOCP.DataProtocol
             SendSocketAsync = new SocketAsyncEventArgs();
             SendSocketAsync.AcceptSocket = BindSocket;
             SendSocketAsync.Completed += new EventHandler<SocketAsyncEventArgs>(OnCompleted);
-
+            
             LastSendTime = DateTime.Now;
             LastReceiveTime = DateTime.Now;
             //SocketCount++;
@@ -672,7 +672,7 @@ namespace LibIOCP.DataProtocol
                 _tlsStream.BeginRead(eventArgs.Buffer, 0, eventArgs.Buffer.Length, ReadCallback, eventArgs);
             }catch(Exception ex) 
             {
-                Close();
+                Close(true);
                 HandleClose("Client Close");
                 return true;
             }
@@ -698,7 +698,7 @@ namespace LibIOCP.DataProtocol
             }
             catch (Exception ex)
             {
-                Close();
+                Close(true);
                 HandleClose("Client Close");
               
             }
@@ -756,7 +756,7 @@ namespace LibIOCP.DataProtocol
             {
 
                 HandleClose("Client error:" + e.SocketError);
-                Close();
+                Close(true);
                 return;
             }
 
@@ -768,7 +768,7 @@ namespace LibIOCP.DataProtocol
         private void DoSocketDisconnect(SocketAsyncEventArgs e)
         {
             HandleClose("Client Disconnect");
-            Close();
+            Close(true);
             return;
         }
         /// <summary>
@@ -803,7 +803,7 @@ namespace LibIOCP.DataProtocol
 
             if (count <= 0 || e.Buffer == null)
             {
-                Close();
+                Close(true);
                 HandleClose("Client Close:"+ e.SocketError);
                 return;
             }
@@ -826,7 +826,8 @@ namespace LibIOCP.DataProtocol
                         return;
                     }
                     AppendToBuffer(bufferData,e.Buffer, e.Offset, count);
-
+                    //byte[] content = new byte[bufferData.Count];
+                    //bufferData.ReadBytes(0, content, 0, content.Length);
                     LastReceiveTime = DateTime.Now;
                     if (socket.Available == 0 || _certConfig!=null)
                     {
@@ -852,7 +853,7 @@ namespace LibIOCP.DataProtocol
                     OnError(this, ex);
                 }
                 HandleClose("Client error:" + e.SocketError);
-                Close();
+                Close(true);
             }
         }
 
@@ -920,9 +921,10 @@ namespace LibIOCP.DataProtocol
         }
 
         /// <summary>
-        /// 关闭
+        ///  关闭
         /// </summary>
-        public virtual void Close()
+        /// <param name="isHandleMessage">是否已经处理过消息通知</param>
+        public virtual void Close(bool isHandleMessage=false)
         {
             //Connected = false;
             try
@@ -1041,13 +1043,17 @@ namespace LibIOCP.DataProtocol
             catch (Exception)
             {
             }
+            if(!isHandleMessage) 
+            {
+                HandleClose("自动关闭");
+            }
         }
 
         internal void HandleClose(String str)
         {
             if (ShowWarning)
             {
-                _message.LogWarning(HostIP + ":" + str);
+                _message.LogWarning(String.Format("{0}:{1}",HostIP , str));
             }
             if (OnClose != null)
             {

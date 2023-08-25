@@ -284,7 +284,7 @@ namespace LibIOCP.DataProtocol
             return dp;
         }
 
-        public override void Close()
+        public override void Close(bool isHandleMessage = false)
         {
             lock (_lokRootObject)
             {
@@ -306,7 +306,7 @@ namespace LibIOCP.DataProtocol
                 }
                 _hanshakeInfo = null;
             }
-            base.Close();
+            base.Close(isHandleMessage);
         }
     }
 }

@@ -41,6 +41,8 @@ namespace LibIOCP
             private set;
             get;
         }
+
+
         /// <summary>
         /// 消息类
         /// </summary>
@@ -90,13 +92,13 @@ namespace LibIOCP
         /// <param name="timeHreat">心跳时间</param>
         /// <param name="timeResend">重发间隔</param>
         /// <param name="message">日志输出器</param>
-        public HeartManager(int timeOut, int timeHreat, int timeResend, IConnectMessage message)
+        public HeartManager(int timeOut, int timeHeart, int timeResend, IConnectMessage message)
         {
             //_clients = new ConcurrentDictionary<ClientSocket, bool>();
 
             TimeResend = timeResend;
             TimeOut = timeOut;
-            TimeHeart = timeHreat;
+            TimeHeart = timeHeart;
             _message = message;
             
         }
@@ -154,6 +156,12 @@ namespace LibIOCP
         public void StartHeart()
         {
             StopHeart();
+
+            if(TimeOut<=0 && TimeHeart<=0 && TimeResend <= 0) 
+            {
+                return;
+            }
+
             _clients = CreateTimelineManager();
             _threadHandle = new AutoResetEvent(false);
             _running = true;
@@ -330,7 +338,7 @@ namespace LibIOCP
         /// <param name="queItems"></param>
         private void CheckResend(long curTime, Queue<ConcurrentDictionary<ClientSocketBase, bool>> queItems, Queue<ClientSocketBase> lstRemove) 
         {
-            if (TimeResend < 0) 
+            if (TimeResend <= 0) 
             {
                 return;
             }
@@ -367,7 +375,7 @@ namespace LibIOCP
         private void CheckHeart(long curTime, Queue<ConcurrentDictionary<ClientSocketBase, bool>> queItems, 
             Queue<ClientSocketBase> lstRemove,DateTime nowDate)
         {
-            if (TimeHeart < 0 || (!_needSendheart))
+            if (TimeHeart <= 0 || (!_needSendheart))
             {
                 return;
             }
@@ -405,7 +413,7 @@ namespace LibIOCP
         private void CheckTimeOut(long curTime, Queue<ConcurrentDictionary<ClientSocketBase, bool>> queItems,
             Queue<ClientSocketBase> lstRemove, Queue<ClientSocketBase> lstClose, DateTime nowDate)
         {
-            if (TimeOut < 0 )
+            if (TimeOut <= 0 )
             {
                 return;
             }
