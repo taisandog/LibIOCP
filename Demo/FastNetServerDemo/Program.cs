@@ -35,7 +35,7 @@ namespace FastNetServerDemo
             _log.ShowWarning = true;
             _log.ShowError=true;
             _log.ShowLog = true;
-            _heart = new HeartManager(20000, 5000, 1000, _log);
+            _heart = new HeartManager(20000, 5000, 1000,0, _log);
             _heart.StartHeart();
             _serverFast = ConnectFast(8587);
             _serverWebSocket = ConnectWebSocket(8588);

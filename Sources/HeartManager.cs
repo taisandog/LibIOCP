@@ -16,33 +16,54 @@ namespace LibIOCP
     public class HeartManager
     {
 
-
+        private int _timeOut;
         /// <summary>
         /// 超时时间
         /// </summary>
         public int TimeOut
         {
-            private set;
-            get;
+
+            get 
+            {
+                return _timeOut;
+            }
         }
+
+        private int _timeHeart;
         /// <summary>
-        /// 心跳时间
+        /// 心跳当前值
         /// </summary>
         public int TimeHeart
         {
-            private set;
-            get;
+
+            get 
+            {
+                return _timeHeart;
+            }
         }
+        private int _timeResend;
         /// <summary>
         /// 数据重发间隔
         /// </summary>
         public int TimeResend
         {
-            private set;
-            get;
+
+            get 
+            {
+                return _timeResend;
+            }
         }
-
-
+        private int _timeHeartSource;
+        /// <summary>
+        /// 心跳原始值
+        /// </summary>
+        public int TimeHeartSource
+        {
+            get 
+            {
+                return _timeHeartSource;
+            }
+        }
         /// <summary>
         /// 消息类
         /// </summary>
@@ -91,14 +112,20 @@ namespace LibIOCP
         /// <param name="timeOut">超时时间</param>
         /// <param name="timeHreat">心跳时间</param>
         /// <param name="timeResend">重发间隔</param>
+        /// <param name="timeCheckDisconnect">检查空连接间隔(如果前边三个值都为0时候才生效)</param>
         /// <param name="message">日志输出器</param>
-        public HeartManager(int timeOut, int timeHeart, int timeResend, IConnectMessage message)
+        public HeartManager(int timeOut, int timeHeart, int timeResend,int timeCheckDisconnect, IConnectMessage message)
         {
             //_clients = new ConcurrentDictionary<ClientSocket, bool>();
 
-            TimeResend = timeResend;
-            TimeOut = timeOut;
-            TimeHeart = timeHeart;
+            _timeResend = timeResend;
+            _timeOut = timeOut;
+            _timeHeart = timeHeart;
+            _timeHeartSource = timeHeart;
+            if(_timeHeart==0 && _timeResend==0&& _timeOut == 0) 
+            {
+                _timeHeart = timeCheckDisconnect;
+            }
             _message = message;
             
         }
@@ -156,12 +183,6 @@ namespace LibIOCP
         public void StartHeart()
         {
             StopHeart();
-
-            if(TimeOut<=0 && TimeHeart<=0 && TimeResend <= 0) 
-            {
-                return;
-            }
-
             _clients = CreateTimelineManager();
             _threadHandle = new AutoResetEvent(false);
             _running = true;
@@ -247,14 +268,14 @@ namespace LibIOCP
         {
             int pertimeResend = 0;
 
-            pertimeResend = TimeResend / 10;
+            pertimeResend = _timeResend / 10;
             if (pertimeResend <= 0)
             {
-                pertimeResend = TimeHeart / 10;
+                pertimeResend = _timeHeart / 10;
             }
             if (pertimeResend <= 0)
             {
-                pertimeResend = TimeOut / 10;
+                pertimeResend = _timeOut / 10;
             }
             
             if (pertimeResend > 200)
@@ -265,7 +286,7 @@ namespace LibIOCP
             {
                 pertimeResend = 10;
             }
-            TimelineManager time = new TimelineManager(TimeResend, TimeHeart, TimeOut, pertimeResend);
+            TimelineManager time = new TimelineManager(_timeResend, TimeHeart, TimeOut, pertimeResend);
             long nowtime = (long)CommonMethods.ConvertDateTimeInt(DateTime.Now, false, true);
             time.Reset(nowtime);
             return time;
@@ -338,7 +359,7 @@ namespace LibIOCP
         /// <param name="queItems"></param>
         private void CheckResend(long curTime, Queue<ConcurrentDictionary<ClientSocketBase, bool>> queItems, Queue<ClientSocketBase> lstRemove) 
         {
-            if (TimeResend <= 0) 
+            if (_timeResend < 0) 
             {
                 return;
             }
@@ -359,7 +380,7 @@ namespace LibIOCP
 
                     try
                     {
-                        connection.DataManager.CheckResend(TimeResend);
+                        connection.DataManager.CheckResend(_timeResend);
                     }
                     catch { }
                 }
@@ -375,7 +396,7 @@ namespace LibIOCP
         private void CheckHeart(long curTime, Queue<ConcurrentDictionary<ClientSocketBase, bool>> queItems, 
             Queue<ClientSocketBase> lstRemove,DateTime nowDate)
         {
-            if (TimeHeart <= 0 || (!_needSendheart))
+            if (TimeHeart < 0 || (!_needSendheart))
             {
                 return;
             }
@@ -393,7 +414,7 @@ namespace LibIOCP
                         lstRemove.Enqueue(connection);
                         continue;
                     }
-                    if (nowDate.Subtract(connection.LastSendTime).TotalMilliseconds > TimeHeart)
+                    if (_timeHeartSource > 0&&nowDate.Subtract(connection.LastSendTime).TotalMilliseconds > _timeHeart)
                     {
                         connection.SendHeard();
                         continue;
@@ -413,7 +434,7 @@ namespace LibIOCP
         private void CheckTimeOut(long curTime, Queue<ConcurrentDictionary<ClientSocketBase, bool>> queItems,
             Queue<ClientSocketBase> lstRemove, Queue<ClientSocketBase> lstClose, DateTime nowDate)
         {
-            if (TimeOut <= 0 )
+            if (_timeOut < 0 )
             {
                 return;
             }
@@ -431,7 +452,7 @@ namespace LibIOCP
                         lstRemove.Enqueue(connection);
                         continue;
                     }
-                    if (nowDate.Subtract(connection.LastReceiveTime).TotalMilliseconds > TimeOut)
+                    if (nowDate.Subtract(connection.LastReceiveTime).TotalMilliseconds > _timeOut)
                     {
                         lstClose.Enqueue(connection);
                         continue;

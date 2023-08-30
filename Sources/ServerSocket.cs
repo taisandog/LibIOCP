@@ -212,8 +212,8 @@ namespace LibIOCP
         /// <param name="timeOut">超时时间</param>
         /// <param name="timeHreat">心跳</param>
         /// <param name="timeResend">数据重发时间</param>
-        public ServerSocket(string ip, int port, int timeOut, int timeHreat, int timeResend, INetProtocol netProtocol=null, IConnectMessage message=null)
-            :this(ip,port,new HeartManager(timeOut, timeHreat, timeResend, message),netProtocol,message)
+        public ServerSocket(string ip, int port, int timeOut, int timeHreat, int timeResend, int timeCheckDisconnect, INetProtocol netProtocol=null, IConnectMessage message=null)
+            :this(ip,port,new HeartManager(timeOut, timeHreat, timeResend, timeCheckDisconnect, message),netProtocol,message)
         {
             _createHeardmanager=true;
         }
