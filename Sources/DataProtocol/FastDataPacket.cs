@@ -19,8 +19,18 @@ namespace LibIOCP.DataProtocol
         {
             get 
             {
-                return (int)PacketID;
+                return GetPacketIdIntValue(PacketID);
             }
+        }
+
+        public static int GetPacketIdIntValue(string packId) 
+        {
+            int ret = 0;
+            if (int.TryParse(packId, out ret))
+            {
+                return ret;
+            }
+            return 0;
         }
 
         /// <summary>
@@ -37,7 +47,7 @@ namespace LibIOCP.DataProtocol
             {
                 _netProtocol = new FastNetAdapter();
             }
-            this.PacketID = packetID;
+            this.PacketID = packetID.ToString();
             
             this.IsLost = isLost;
             //this.IsVerify = verify;

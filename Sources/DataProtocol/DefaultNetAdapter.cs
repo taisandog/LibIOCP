@@ -330,13 +330,7 @@ namespace LibIOCP.DataProtocol
 
         
 
-        public override object EmptyPacketId 
-        {
-            get 
-            {
-                return 0;
-            }
-        }
+       
 
         
        

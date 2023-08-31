@@ -136,13 +136,15 @@ namespace LibIOCP.DataProtocol
             HeartManager heartManager = null, bool isServerSocket = false, SocketCertConfig certConfig = null);
 
         
-
         /// <summary>
-        /// 空ID
+        /// 是否空包id
         /// </summary>
         /// <param name="packetId"></param>
         /// <returns></returns>
-        public abstract object EmptyPacketId { get; }
+        public virtual bool IsEmptyPacketId(string packetId) 
+        {
+            return string.IsNullOrWhiteSpace(packetId);
+        }
         /// <summary>
         /// 缓冲长度
         /// </summary>

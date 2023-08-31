@@ -44,7 +44,7 @@ namespace LibIOCP.DataProtocol
             {
                 _netProtocol = new DefaultNetAdapter();
             }
-            this.PacketID = packetID;
+            this.PacketID = packetID.ToString();
 
             this.IsLost = lost;
 

@@ -190,15 +190,15 @@ namespace LibIOCP
             ConcurrentQueue<DataPacketBase> queSend = _sendPacket;
             if (queSend == null)
             {
-                return "本连接已释放";
+                return "Connect is Close";
             }
             object mergeTag = dataPacket.MergeTag;
-            object packetId = dataPacket.PacketID;
-            if (mergeTag!=null || object.Equals(packetId,_netProtocol.EmptyPacketId))
+            string packetId = dataPacket.PacketID;
+            if (mergeTag!=null || _netProtocol.IsEmptyPacketId(packetId))
             {
                 if (CheckExists(queSend, mergeTag, packetId))
                 {
-                    return "同标签合并";
+                    return "merge same Tag";
                 }
             }
             queSend.Enqueue(dataPacket);
@@ -211,20 +211,23 @@ namespace LibIOCP
         /// </summary>
         /// <param name="dataPacket"></param>
         /// <returns></returns>
-        private bool CheckExists(ConcurrentQueue<DataPacketBase> queSend, object mergeTag, object packetId)
+        private bool CheckExists(ConcurrentQueue<DataPacketBase> queSend, object mergeTag, string packetId)
         {
             Type mergeTagType = null;
-            if (mergeTag != null)
+            if (mergeTag == null)
             {
-                mergeTagType = mergeTag.GetType();
+                return false;
             }
+            mergeTagType = mergeTag.GetType();
+
             object curMrgeTag = null;
             foreach (DataPacketBase dp in queSend)
             {
-                if (object.Equals(packetId , dp.PacketID))
+                if (string.Equals(packetId , dp.PacketID))
                 {
                     return true;
                 }
+                
                 curMrgeTag = dp.MergeTag;
                 if (curMrgeTag == null)
                 {
@@ -233,7 +236,7 @@ namespace LibIOCP
                 
                 try
                 {
-                    if (mergeTagType== curMrgeTag.GetType() && mergeTag.Equals(curMrgeTag))
+                    if (mergeTag.Equals(curMrgeTag))
                     {
                         return true;
                     }

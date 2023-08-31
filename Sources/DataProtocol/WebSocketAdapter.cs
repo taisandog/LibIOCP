@@ -236,20 +236,5 @@ namespace LibIOCP.DataProtocol
             WebSocketClientSocket ret = new WebSocketClientSocket(socket, maxSendPool, maxLostPool, heartManager, isServerSocket, this,certConfig);
             return ret;
         }
-
-
-
-        public override object EmptyPacketId
-        {
-            get
-            {
-                return 0;
-            }
-        }
-
-        
-       
-
-       
     }
 }

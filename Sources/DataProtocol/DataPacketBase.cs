@@ -97,10 +97,12 @@ namespace LibIOCP.DataProtocol
             set;
             get;
         }
+
+
         /// <summary>
         /// 数据包编号
         /// </summary>
-        public object PacketID
+        public string PacketID
         {
             set;
             get;

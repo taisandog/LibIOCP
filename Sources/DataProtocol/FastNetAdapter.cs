@@ -61,7 +61,7 @@ namespace LibIOCP.DataProtocol
                 using (BinaryWriter bw = new BinaryWriter(stm))
                 {
                     bw.Write(_DATA_HEAD);
-                    byte[] packetId = IntToBytes((int)packet.PacketID);
+                    byte[] packetId = IntToBytes(FastDataPacket.GetPacketIdIntValue(packet.PacketID));
                     bw.Write(packetId);
 
                     int len=0;
@@ -250,13 +250,7 @@ namespace LibIOCP.DataProtocol
 
 
 
-        public override object EmptyPacketId
-        {
-            get
-            {
-                return null;
-            }
-        }
+        
 
         public override int BufferLength 
         {
