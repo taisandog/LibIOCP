@@ -51,7 +51,8 @@ namespace LibIOCP.DataProtocol
                 case OperType.Row:
                     return true;
                 case OperType.Close:
-                    socket.Close();
+                    socket.Close(true);
+                    socket.HandleClose("websocket user closed");
                     return true;
                 default:
                     break;
