@@ -122,10 +122,10 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="Buffalo.ArgCommon">
-      <HintPath>..\GameBoxServer\DLL\Buffalo.ArgCommon.dll</HintPath>
+      <HintPath>..\BuffaloSetup\AddIns\Net4.8\Buffalo.ArgCommon.dll</HintPath>
     </Reference>
     <Reference Include="Buffalo.Kernel">
-      <HintPath>..\GameBoxServer\DLL\Buffalo.Kernel.dll</HintPath>
+      <HintPath>..\BuffaloSetup\AddIns\Net4.8\Buffalo.Kernel.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />

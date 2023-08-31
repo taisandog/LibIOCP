@@ -249,8 +249,15 @@ namespace LibIOCP.DataProtocol
         }
 
 
+        public override bool IsEmptyPacketId(string packetId)
+        {
+            if(string.IsNullOrWhiteSpace(packetId) || packetId == "0") 
+            {
+                return true;
+            }
+            return false;
+        }
 
-        
 
         public override int BufferLength 
         {

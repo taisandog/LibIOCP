@@ -47,8 +47,10 @@ namespace LibIOCP.DataProtocol
             {
                 _netProtocol = new FastNetAdapter();
             }
-            this.PacketID = packetID.ToString();
-            
+            if (packetID > 0)
+            {
+                this.PacketID = packetID.ToString();
+            }
             this.IsLost = isLost;
             //this.IsVerify = verify;
 

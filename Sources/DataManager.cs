@@ -194,7 +194,7 @@ namespace LibIOCP
             }
             object mergeTag = dataPacket.MergeTag;
             string packetId = dataPacket.PacketID;
-            if (mergeTag!=null || _netProtocol.IsEmptyPacketId(packetId))
+            if (mergeTag!=null || !_netProtocol.IsEmptyPacketId(packetId))
             {
                 if (CheckExists(queSend, mergeTag, packetId))
                 {

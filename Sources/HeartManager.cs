@@ -106,6 +106,8 @@ namespace LibIOCP
         /// 检查线程
         /// </summary>
         private Thread CheckThread;
+
+        private object CheckThreadLok = new object();
         /// <summary>
         /// 
         /// </summary>
@@ -168,13 +170,16 @@ namespace LibIOCP
             {
                 return;
             }
-            if (CheckThread == null || !CheckThread.IsAlive)
+            lock (CheckThreadLok)
             {
-                if (Util.HasShowWarning(_message))
+                if (CheckThread == null || !CheckThread.IsAlive)
                 {
-                    _message.LogWarning("Start Heart");
+                    if (Util.HasShowWarning(_message))
+                    {
+                        _message.LogWarning("Start Heart");
+                    }
+                    StartHeart();
                 }
-                StartHeart();
             }
         }
         /// <summary>

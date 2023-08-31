@@ -87,8 +87,11 @@ namespace LibIOCP.DataProtocol
             {
                 _netProtocol = new DefaultNetAdapter();
             }
-            this.PacketID = packetID.ToString();
-            
+            if (packetID > 0)
+            {
+                this.PacketID = packetID.ToString();
+            }
+
             this.IsLost = lost;
             this.IsVerify = verify;
            
